@@ -3,9 +3,6 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { MailCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   forgotPasswordAction,
   type ForgotPasswordState,
@@ -14,9 +11,9 @@ import {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full">
+    <button type="submit" disabled={pending} className="auth-submit">
       {pending ? "Enviando..." : "Enviar enlace"}
-    </Button>
+    </button>
   );
 }
 
@@ -28,12 +25,20 @@ export function ForgotPasswordForm() {
 
   if (state?.sent) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg border bg-muted/30 p-5 text-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+      <div
+        className="flex flex-col items-start gap-3 rounded-lg border p-5"
+        style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-soft)" }}
+      >
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-full"
+          style={{ backgroundColor: "color-mix(in oklab, #059669 15%, transparent)", color: "#059669" }}
+        >
           <MailCheck className="h-5 w-5" />
         </div>
-        <p className="text-sm font-medium">Revisa tu bandeja de entrada</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[15px] font-semibold" style={{ color: "var(--ink)" }}>
+          Revisa tu bandeja de entrada
+        </p>
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink-soft)" }}>
           Si tu email está registrado, te hemos enviado un enlace válido por 1
           hora para restablecer tu contraseña.
         </p>
@@ -42,20 +47,21 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
+        <label htmlFor="email" className="auth-label">Email</label>
+        <input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
           placeholder="tu@email.com"
+          className="auth-input"
         />
       </div>
       {state?.error ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="auth-error" role="alert">
           {state.error}
         </p>
       ) : null}

@@ -1,13 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { LoginForm } from "./login-form";
 import { getSessionUser } from "@/lib/session";
 
@@ -25,44 +18,42 @@ export default async function LoginPage({
   const resetOk = params.reset === "1";
 
   return (
-    <Card className="gap-6 py-6">
-      <CardHeader className="gap-2 text-center">
-        <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
-        <CardDescription>
-          Accede con tu cuenta para continuar.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {resetOk ? (
-          <div
-            className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
-            role="status"
-          >
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              Contraseña actualizada. Inicia sesión con la nueva.
-            </span>
-          </div>
-        ) : null}
-        <LoginForm next={next} />
-        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-          <Link
-            href="/forgot-password"
-            className="underline-offset-4 hover:text-foreground hover:underline"
-          >
-            ¿Olvidaste tu contraseña?
-          </Link>
-          <p>
-            ¿No tienes cuenta?{" "}
-            <Link
-              href="/register"
-              className="font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              Regístrate
-            </Link>
-          </p>
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-3">
+        <p className="auth-eyebrow">Bienvenido de vuelta</p>
+        <h1 className="auth-title">Iniciar sesión</h1>
+        <p className="auth-subtitle">
+          Accede a tu cuenta para continuar comprando y seguir tus pedidos.
+        </p>
+      </div>
+
+      {resetOk ? (
+        <div className="auth-alert auth-alert--success" role="status">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Contraseña actualizada. Inicia sesión con la nueva.</span>
         </div>
-      </CardContent>
-    </Card>
+      ) : null}
+
+      <LoginForm next={next} />
+
+      <div
+        className="flex flex-col gap-3 border-t pt-6 text-[13px]"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <Link
+          href="/forgot-password"
+          className="auth-link"
+          style={{ color: "var(--ink-soft)" }}
+        >
+          ¿Olvidaste tu contraseña?
+        </Link>
+        <p style={{ color: "var(--ink-soft)" }}>
+          ¿No tienes cuenta?{" "}
+          <Link href="/register" className="auth-link font-semibold underline">
+            Regístrate
+          </Link>
+        </p>
+      </div>
+    </div>
   );
 }
