@@ -50,7 +50,17 @@ async function getAccessToken(): Promise<string> {
     },
     body: "grant_type=client_credentials",
   });
-  const body = await res.json().catch(() => ({}));
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+    access_token?: string;
+    expires_in?: number;
+    id?: string;
+    status?: string;
+    links?: Array<{ rel?: string; href?: string }>;
+    purchase_units?: Array<{
+      payments?: { captures?: Array<{ id?: string }> };
+    }>;
+    payer?: { email_address?: string };
+  };
   if (!res.ok) throw new PaypalApiError(res.status, body);
   const token = body.access_token as string;
   const expiresIn = Number(body.expires_in ?? 3600);
@@ -99,7 +109,17 @@ export async function createPaypalOrder(
       },
     }),
   });
-  const body = await res.json().catch(() => ({}));
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+    access_token?: string;
+    expires_in?: number;
+    id?: string;
+    status?: string;
+    links?: Array<{ rel?: string; href?: string }>;
+    purchase_units?: Array<{
+      payments?: { captures?: Array<{ id?: string }> };
+    }>;
+    payer?: { email_address?: string };
+  };
   if (!res.ok) throw new PaypalApiError(res.status, body);
   const links = Array.isArray(body.links) ? body.links : [];
   const approveLink = links.find((l: { rel?: string }) => l.rel === "approve");
@@ -130,7 +150,17 @@ export async function capturePaypalOrder(
       },
     },
   );
-  const body = await res.json().catch(() => ({}));
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+    access_token?: string;
+    expires_in?: number;
+    id?: string;
+    status?: string;
+    links?: Array<{ rel?: string; href?: string }>;
+    purchase_units?: Array<{
+      payments?: { captures?: Array<{ id?: string }> };
+    }>;
+    payer?: { email_address?: string };
+  };
   if (!res.ok) throw new PaypalApiError(res.status, body);
   const firstUnit = body.purchase_units?.[0];
   const firstCapture = firstUnit?.payments?.captures?.[0];
