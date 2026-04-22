@@ -1,6 +1,6 @@
 {
   "name": "ecommerce-api",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Ecommerce API with Express, TypeScript, Prisma and PostgreSQL",
   "main": "dist/index.js",
   "scripts": {
