@@ -1,20 +1,26 @@
-import { DashboardSidebar } from "@/components/dashboard/sidebar";
-import { DashboardTopbar } from "@/components/dashboard/topbar";
+import { redirect } from "next/navigation";
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { DashboardHeader } from "@/components/dashboard/dashboard-header";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { getSessionUser } from "@/lib/session";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getSessionUser();
+  if (!user) redirect("/login?next=/dashboard");
+
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <DashboardSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <DashboardTopbar />
-        <main className="flex-1 overflow-y-auto bg-muted/20 p-4 md:p-6">
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <DashboardHeader />
+        <div className="flex flex-1 flex-col gap-4 bg-muted/20 p-4 md:p-6">
           {children}
-        </main>
-      </div>
-    </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

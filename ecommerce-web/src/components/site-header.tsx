@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { Menu, Search, ShoppingBag, User, Heart } from "lucide-react";
+import {
+  ChevronDown,
+  Hexagon,
+  LogOut,
+  Menu,
+  Search,
+  User,
+  Heart,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +17,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CartSheet } from "@/components/cart-sheet";
+import { logoutAction } from "@/app/(auth)/actions";
+import type { ApiUser } from "@/lib/api";
 
 const navLinks = [
   { href: "/products", label: "Mujer" },
@@ -20,14 +29,18 @@ const navLinks = [
   { href: "/products", label: "Ofertas" },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ user }: { user: ApiUser | null }) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
+      <div className="mx-auto flex h-20 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Sheet>
           <SheetTrigger
             render={
-              <Button variant="ghost" size="icon" className="md:hidden" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+              />
             }
           >
             <Menu className="h-5 w-5" />
@@ -36,7 +49,7 @@ export function SiteHeader() {
           <SheetContent side="left" className="w-72 p-6">
             <SheetHeader className="px-0">
               <SheetTitle className="text-xl font-bold tracking-tight">
-                ATELIER
+                martup
               </SheetTitle>
             </SheetHeader>
             <nav className="mt-6 flex flex-col gap-1">
@@ -53,127 +66,139 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        <Link href="/" className="text-xl font-bold tracking-tight">
-          ATELIER
+        <Link href="/" className="flex items-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1d3a55] text-white dark:bg-white dark:text-[#1d3a55]">
+            <Hexagon className="h-5 w-5" strokeWidth={2.5} />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="text-xl font-extrabold tracking-tight text-[#1d3a55] dark:text-white">
+              martup
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Ecommerce Website
+            </span>
+          </span>
         </Link>
 
-        <nav className="ml-6 hidden items-center gap-6 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-1">
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar prendas..." className="w-64 pl-9" />
-          </div>
-          <Button variant="ghost" size="icon" className="lg:hidden">
-            <Search className="h-5 w-5" />
-            <span className="sr-only">Buscar</span>
-          </Button>
-          <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-            <User className="h-5 w-5" />
-            <span className="sr-only">Cuenta</span>
-          </Button>
-          <Button variant="ghost" size="icon" className="hidden sm:inline-flex">
-            <Heart className="h-5 w-5" />
-            <span className="sr-only">Favoritos</span>
-          </Button>
-          <ThemeToggle />
-
+        <div className="mx-auto hidden w-full max-w-xl items-center rounded-full border border-border/60 bg-background px-1 py-1 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] md:flex">
           <Sheet>
             <SheetTrigger
               render={
-                <Button variant="ghost" size="icon" className="relative" />
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                />
               }
             >
-              <ShoppingBag className="h-5 w-5" />
-              <Badge className="absolute -right-1 -top-1 h-5 min-w-5 rounded-full px-1 text-[10px]">
-                2
-              </Badge>
-              <span className="sr-only">Carrito</span>
+              <Menu className="h-4 w-4" />
+              <span>Menu</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="flex w-full flex-col sm:max-w-md"
-            >
-              <SheetHeader>
-                <SheetTitle>Tu carrito (2)</SheetTitle>
+            <SheetContent side="left" className="w-72 p-6">
+              <SheetHeader className="px-0">
+                <SheetTitle className="text-xl font-bold tracking-tight">
+                  Categorías
+                </SheetTitle>
               </SheetHeader>
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <CartItem
-                  image="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=200&auto=format&fit=crop&q=80"
-                  name="Oversized Cotton Tee"
-                  variant="Negro · M"
-                  price={29.99}
-                />
-                <CartItem
-                  image="https://images.unsplash.com/photo-1591561954557-26941169b49e?w=200&auto=format&fit=crop&q=80"
-                  name="Bolso Crossbody Piel"
-                  variant="Marrón · Única"
-                  price={149.0}
-                />
-              </div>
-              <div className="border-t p-6">
-                <div className="mb-4 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">$178.99</span>
-                </div>
-                <Button className="w-full" size="lg">
-                  Ir al checkout
-                </Button>
-              </div>
+              <nav className="mt-6 flex flex-col gap-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
             </SheetContent>
           </Sheet>
+
+          <span className="mx-1 h-6 w-px bg-border" />
+
+          <input
+            type="search"
+            placeholder="Search"
+            className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+          />
+
+          <button
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+            aria-label="Buscar"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative md:hidden"
+            aria-label="Buscar"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+
+          <Link
+            href="/products"
+            className="relative hidden sm:inline-flex"
+            aria-label="Favoritos"
+          >
+            <Heart className="h-6 w-6 text-[#1d3a55] dark:text-white" />
+            <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1d3a55] px-1 text-[10px] font-semibold text-white dark:bg-white dark:text-[#1d3a55]">
+              05
+            </span>
+          </Link>
+
+          <span className="hidden h-6 w-px bg-border sm:block" />
+
+          <CartSheet />
+
+          <span className="hidden h-6 w-px bg-border md:block" />
+
+          {user ? (
+            <div className="hidden items-center gap-2 md:flex">
+              {user.role === "ADMIN" ? (
+                <Link
+                  href="/dashboard"
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Dashboard
+                </Link>
+              ) : null}
+              <span className="max-w-32 truncate text-xs text-muted-foreground">
+                {user.name?.trim() || user.email}
+              </span>
+              <form action={logoutAction}>
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="sr-only">Cerrar sesión</span>
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex"
+              aria-label="Iniciar sesión"
+            >
+              <Button variant="ghost" size="icon" render={<span />}>
+                <User className="h-5 w-5" />
+                <span className="sr-only">Iniciar sesión</span>
+              </Button>
+            </Link>
+          )}
+
+          <ThemeToggle />
         </div>
       </div>
     </header>
-  );
-}
-
-function CartItem({
-  image,
-  name,
-  variant,
-  price,
-}: {
-  image: string;
-  name: string;
-  variant: string;
-  price: number;
-}) {
-  return (
-    <div className="flex gap-4 border-b py-4 last:border-0">
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={image} alt={name} className="h-full w-full object-cover" />
-      </div>
-      <div className="flex-1">
-        <div className="flex justify-between gap-2">
-          <div>
-            <p className="text-sm font-medium">{name}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{variant}</p>
-          </div>
-          <p className="text-sm font-medium">${price.toFixed(2)}</p>
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <div className="flex items-center rounded-md border">
-            <button className="px-2 py-1 text-sm">−</button>
-            <span className="px-2 text-sm">1</span>
-            <button className="px-2 py-1 text-sm">+</button>
-          </div>
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-            Eliminar
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }

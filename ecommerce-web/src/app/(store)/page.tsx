@@ -3,9 +3,10 @@ import { CategoryGrid } from "@/components/category-grid";
 import { ProductGrid } from "@/components/product-grid";
 import { ValueProps } from "@/components/value-props";
 import { Newsletter } from "@/components/newsletter";
-import { products } from "@/lib/products";
+import { fetchProducts } from "@/lib/products";
 
-export default function Home() {
+export default async function Home() {
+  const products = await fetchProducts();
   const newArrivals = products.filter((p) => p.isNew);
   const featured = products.slice(0, 8);
 

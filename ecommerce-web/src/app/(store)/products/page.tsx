@@ -1,7 +1,7 @@
 import { ProductCard } from "@/components/product-card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { products } from "@/lib/products";
+import { fetchProducts } from "@/lib/products";
 
 const filters = {
   categories: ["Mujer", "Hombre", "Accesorios", "Calzado"],
@@ -15,7 +15,8 @@ const filters = {
   ],
 };
 
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  const products = await fetchProducts();
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="border-b py-8">

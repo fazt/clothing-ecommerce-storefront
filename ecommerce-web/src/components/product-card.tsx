@@ -6,12 +6,6 @@ import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/products";
 
 export function ProductCard({ product }: { product: Product }) {
-  const discount = product.originalPrice
-    ? Math.round(
-        ((product.originalPrice - product.price) / product.originalPrice) * 100,
-      )
-    : 0;
-
   return (
     <div className="group flex flex-col">
       <Link
@@ -29,9 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
           {product.isNew && (
             <Badge className="bg-foreground text-background">Nuevo</Badge>
           )}
-          {product.isSale && discount > 0 && (
-            <Badge variant="destructive">−{discount}%</Badge>
-          )}
+          {product.isSale && <Badge variant="destructive">Sale</Badge>}
         </div>
         <Button
           size="icon"
@@ -55,20 +47,19 @@ export function ProductCard({ product }: { product: Product }) {
           <span className="text-sm font-semibold">
             ${product.price.toFixed(2)}
           </span>
-          {product.originalPrice && (
-            <span className="text-xs text-muted-foreground line-through">
-              ${product.originalPrice.toFixed(2)}
-            </span>
-          )}
         </div>
         <div className="mt-1 flex gap-1">
-          {product.colors.map((c) => (
-            <span
-              key={c}
-              className="h-3 w-3 rounded-full border"
-              style={{ backgroundColor: c }}
-            />
-          ))}
+          {product.colors.slice(0, 6).map((c) => {
+            const isHex = c.startsWith("#");
+            return (
+              <span
+                key={c}
+                className="h-3 w-3 rounded-full border"
+                style={isHex ? { backgroundColor: c } : undefined}
+                title={c}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
