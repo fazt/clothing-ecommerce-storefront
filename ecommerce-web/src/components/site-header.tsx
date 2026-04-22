@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LogOut, Menu, Search, User } from "lucide-react";
+import { Menu, Power, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -124,7 +124,7 @@ export function SiteHeader({ user }: { user: ApiUser | null }) {
                   className="text-[color:var(--ink)] hover:bg-transparent"
                   title="Cerrar sesión"
                 >
-                  <LogOut className="h-5 w-5" strokeWidth={2} />
+                  <Power className="h-5 w-5" strokeWidth={2} />
                   <span className="sr-only">Cerrar sesión</span>
                 </Button>
               </form>
