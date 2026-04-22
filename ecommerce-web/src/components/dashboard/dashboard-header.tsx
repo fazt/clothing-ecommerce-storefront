@@ -1,114 +1,50 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Bell, Search } from "lucide-react";
-
 import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
-const segmentLabels: Record<string, string> = {
-  dashboard: "Dashboard",
-  products: "Productos",
-  categories: "Categorías",
-  orders: "Órdenes",
-  customers: "Clientes",
-  discounts: "Descuentos",
-  analytics: "Analíticas",
-  users: "Usuarios",
-  settings: "Ajustes",
-  "my-orders": "Mis pedidos",
-};
-
-function labelFor(segment: string): string {
-  return segmentLabels[segment] ?? segment.replace(/-/g, " ");
-}
-
 export function DashboardHeader() {
-  const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
-
-  const crumbs = segments.map((segment, index) => {
-    const href = "/" + segments.slice(0, index + 1).join("/");
-    const isLast = index === segments.length - 1;
-    return { segment, href, isLast, label: labelFor(segment) };
-  });
-
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur transition-[width,height] ease-linear supports-[backdrop-filter]:bg-background/60 group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-      <div className="flex flex-1 items-center gap-2 px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mr-2 data-[orientation=vertical]:h-4"
+    <header
+      className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b px-5 md:px-8"
+      style={{
+        background: "var(--a-bg)",
+        borderColor: "var(--a-border)",
+      }}
+    >
+      <SidebarTrigger className="-ml-1 text-[color:var(--a-ink-2)]" />
+
+      <div
+        className="ml-2 hidden items-center gap-2 rounded-xl border px-3 py-2 md:flex md:w-[360px]"
+        style={{
+          background: "var(--a-card)",
+          borderColor: "var(--a-border)",
+        }}
+      >
+        <Search className="h-4 w-4 text-[color:var(--a-ink-4)]" />
+        <input
+          type="search"
+          placeholder="Search anything..."
+          className="w-full bg-transparent text-sm text-[color:var(--a-ink)] placeholder:text-[color:var(--a-ink-4)] focus:outline-none"
+          aria-label="Search"
         />
-        <Breadcrumb>
-          <BreadcrumbList>
-            {crumbs.map((crumb, index) => (
-              <BreadcrumbListItem
-                key={crumb.href}
-                crumb={crumb}
-                showSeparator={index < crumbs.length - 1}
-              />
-            ))}
-          </BreadcrumbList>
-        </Breadcrumb>
+        <kbd className="hidden rounded-md border bg-[color:var(--a-card-muted)] px-1.5 py-0.5 text-[10px] font-mono text-[color:var(--a-ink-3)] md:inline-flex">
+          ⌘K
+        </kbd>
       </div>
 
-      <div className="ml-auto flex items-center gap-2 px-4">
-        <div className="relative hidden w-full max-w-xs md:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar..."
-            className="h-9 pl-9"
-          />
-        </div>
+      <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
-          <span className="sr-only">Notificaciones</span>
-        </Button>
+        <button
+          type="button"
+          className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[color:var(--a-card-muted)]"
+          aria-label="Notificaciones"
+        >
+          <Bell className="h-[18px] w-[18px] text-[color:var(--a-ink-2)]" strokeWidth={1.8} />
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[color:var(--a-accent-red)]" />
+        </button>
       </div>
     </header>
-  );
-}
-
-function BreadcrumbListItem({
-  crumb,
-  showSeparator,
-}: {
-  crumb: { href: string; isLast: boolean; label: string };
-  showSeparator: boolean;
-}) {
-  return (
-    <>
-      <BreadcrumbItem className={crumb.isLast ? "" : "hidden md:block"}>
-        {crumb.isLast ? (
-          <BreadcrumbPage className="capitalize">{crumb.label}</BreadcrumbPage>
-        ) : (
-          <BreadcrumbLink
-            render={<Link href={crumb.href} />}
-            className="capitalize"
-          >
-            {crumb.label}
-          </BreadcrumbLink>
-        )}
-      </BreadcrumbItem>
-      {showSeparator ? (
-        <BreadcrumbSeparator className="hidden md:block" />
-      ) : null}
-    </>
   );
 }

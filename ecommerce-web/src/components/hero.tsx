@@ -1,197 +1,104 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
-
-type Slide = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cta: { label: string; href: string };
-  image: { src: string; alt: string };
-  bg: string;
-  darkBg: string;
-  fg: string;
-  darkFg: string;
-  circles: string;
-};
-
-const slides: Slide[] = [
-  {
-    eyebrow: "Best Deal Forever",
-    title: "Best Fashion\nCollection",
-    description:
-      "There are many variations of passages of Lorem Ipsum available, but the majority.",
-    cta: { label: "Get It Now", href: "/products" },
-    image: {
-      src: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=1200&auto=format&fit=crop&q=80",
-      alt: "Best Fashion Collection",
-    },
-    bg: "bg-[#bde3e6]",
-    darkBg: "dark:bg-[#2b4447]",
-    fg: "text-[#1d3a55]",
-    darkFg: "dark:text-white",
-    circles: "bg-white/20",
-  },
-  {
-    eyebrow: "Summer Essentials",
-    title: "Elegance in\nEvery Thread",
-    description:
-      "Discover timeless pieces designed to move with you, season after season.",
-    cta: { label: "Shop Now", href: "/products" },
-    image: {
-      src: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=1200&auto=format&fit=crop&q=80",
-      alt: "Summer Essentials",
-    },
-    bg: "bg-[#f5d6c6]",
-    darkBg: "dark:bg-[#4a3228]",
-    fg: "text-[#5c2a1f]",
-    darkFg: "dark:text-white",
-    circles: "bg-white/25",
-  },
-  {
-    eyebrow: "New Arrivals",
-    title: "Street Style\nReimagined",
-    description:
-      "Fresh drops, bold silhouettes, and the edge your wardrobe has been waiting for.",
-    cta: { label: "Explore", href: "/products" },
-    image: {
-      src: "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200&auto=format&fit=crop&q=80",
-      alt: "Street Style Reimagined",
-    },
-    bg: "bg-[#e0d7f0]",
-    darkBg: "dark:bg-[#352a4a]",
-    fg: "text-[#2d1b55]",
-    darkFg: "dark:text-white",
-    circles: "bg-white/25",
-  },
-];
 
 export function Hero() {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(
-      () => setIndex((i) => (i + 1) % slides.length),
-      6000,
-    );
-    return () => clearInterval(id);
-  }, []);
-
-  const active = slides[index];
-
   return (
-    <section className="px-4 py-6 sm:px-6 lg:px-8">
-      <div
-        className={`relative mx-auto w-full max-w-7xl overflow-hidden rounded-[2.5rem] transition-colors duration-700 ${active.bg} ${active.darkBg}`}
-      >
-        <div className="pointer-events-none absolute left-10 top-12 hidden grid-cols-8 gap-2 md:grid">
-          {Array.from({ length: 56 }).map((_, i) => (
-            <span
-              key={`dot-tl-${i}`}
-              className="h-1.5 w-1.5 rounded-full bg-white/70"
-            />
-          ))}
-        </div>
+    <section
+      className="relative overflow-hidden"
+      style={{ backgroundColor: "var(--bg-soft)" }}
+    >
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 pb-12 pt-10 sm:px-6 md:grid-cols-2 md:gap-10 md:pt-16 lg:px-8">
+        {/* Left */}
+        <div className="flex flex-col justify-center pt-4 md:pt-16">
+          <h1 className="font-integral reveal text-[40px] sm:text-[52px] md:text-[56px] lg:text-[64px]">
+            Find clothes
+            <br />
+            that matches
+            <br />
+            your style
+          </h1>
+          <p
+            className="reveal mt-6 max-w-md text-[14px] md:text-[16px] leading-relaxed text-[color:var(--ink-soft)]"
+            style={{ animationDelay: "0.1s" }}
+          >
+            Browse through our diverse range of meticulously crafted garments,
+            designed to bring out your individuality and cater to your sense of
+            style.
+          </p>
+          <div
+            className="reveal mt-8"
+            style={{ animationDelay: "0.2s" }}
+          >
+            <Link href="/products" className="btn-primary">
+              Shop Now
+            </Link>
+          </div>
 
-        <div className="pointer-events-none absolute bottom-10 right-10 hidden grid-cols-8 gap-2 md:grid">
-          {Array.from({ length: 56 }).map((_, i) => (
-            <span
-              key={`dot-br-${i}`}
-              className="h-1.5 w-1.5 rounded-full border border-white/80"
-            />
-          ))}
-        </div>
-
-        <div className="pointer-events-none absolute right-[15%] top-1/2 hidden -translate-y-1/2 md:block">
-          <span
-            className={`absolute inset-0 -m-48 rounded-full transition-colors duration-700 ${active.circles}`}
-          />
-          <span
-            className={`absolute inset-0 -m-36 rounded-full transition-colors duration-700 ${active.circles}`}
-          />
-          <span
-            className={`absolute inset-0 -m-24 rounded-full transition-colors duration-700 ${active.circles}`}
-          />
-        </div>
-
-        <div className="relative">
-          {slides.map((slide, i) => (
+          {/* Stats */}
+          <div
+            className="reveal mt-10 flex flex-wrap items-center gap-8 md:gap-10"
+            style={{ animationDelay: "0.3s" }}
+          >
+            <Stat value="200+" label="International Brands" />
             <div
-              key={slide.title}
-              aria-hidden={i !== index}
-              className={`grid items-center gap-8 px-6 py-12 sm:px-10 md:grid-cols-2 md:gap-4 md:py-16 lg:px-16 lg:py-24 ${
-                i === index
-                  ? "relative z-10 opacity-100"
-                  : "pointer-events-none absolute inset-0 opacity-0"
-              } transition-opacity duration-700`}
-            >
-              <div className="relative z-10 flex flex-col gap-6">
-                <span
-                  className={`text-xs font-semibold uppercase tracking-[0.25em] ${slide.fg} ${slide.darkFg} opacity-90`}
-                >
-                  {slide.eyebrow}
-                </span>
-                <h1
-                  className={`font-heading text-5xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl ${slide.fg} ${slide.darkFg} whitespace-pre-line`}
-                >
-                  {slide.title}
-                </h1>
-                <p
-                  className={`max-w-md text-base ${slide.fg} ${slide.darkFg} opacity-80`}
-                >
-                  {slide.description}
-                </p>
-                <div className="mt-2">
-                  <Link
-                    href={slide.cta.href}
-                    className={`inline-flex items-center justify-center rounded-full bg-white px-10 py-4 text-sm font-semibold uppercase tracking-[0.15em] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-10px_rgba(0,0,0,0.45)] ${slide.fg}`}
-                  >
-                    {slide.cta.label}
-                  </Link>
-                </div>
-              </div>
-
-              <div className="relative z-10 h-105 w-full md:h-130 lg:h-150">
-                <Image
-                  src={slide.image.src}
-                  alt={slide.image.alt}
-                  fill
-                  priority={i === 0}
-                  className="object-contain object-bottom"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-              </div>
-            </div>
-          ))}
+              className="hidden h-14 w-px sm:block"
+              style={{ backgroundColor: "var(--border)" }}
+            />
+            <Stat value="2,000+" label="High-Quality Products" />
+            <div
+              className="hidden h-14 w-px sm:block"
+              style={{ backgroundColor: "var(--border)" }}
+            />
+            <Stat value="30,000+" label="Happy Customers" />
+          </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
-          {slides.map((slide, i) => {
-            const isActive = i === index;
-            return (
-              <button
-                key={slide.title}
-                type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`Ir al slide ${i + 1}`}
-                aria-current={isActive}
-                className={`h-0.75 rounded-full transition-all duration-500 ${
-                  isActive ? "w-10 bg-white" : "w-5 bg-white/50 hover:bg-white/70"
-                }`}
-              />
-            );
-          })}
-        </div>
-
-        <div
-          className={`pointer-events-none absolute bottom-6 right-6 z-20 transition-colors duration-700 ${active.fg} ${active.darkFg}`}
-        >
-          <Sparkles className="h-5 w-5" strokeWidth={2.5} />
+        {/* Right — image */}
+        <div className="relative flex items-end justify-center md:justify-end">
+          <div className="relative h-[360px] w-full sm:h-[460px] md:h-[580px]">
+            <Image
+              src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&auto=format&fit=crop&q=80"
+              alt="Find clothes that match your style"
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover object-top"
+            />
+            {/* Decorative star/asterisk */}
+            <Star className="absolute -top-2 right-6 h-16 w-16 md:h-24 md:w-24" />
+            <Star className="absolute bottom-24 left-2 h-10 w-10 md:h-16 md:w-16" />
+          </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <p className="font-bold text-[26px] md:text-[36px] lg:text-[40px] leading-none">
+        {value}
+      </p>
+      <p className="mt-1 text-[12px] md:text-[14px] text-[color:var(--ink-soft)]">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+function Star({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 100 100"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M50 0L60 40L100 50L60 60L50 100L40 60L0 50L40 40L50 0Z"
+        fill="var(--ink)"
+      />
+    </svg>
   );
 }

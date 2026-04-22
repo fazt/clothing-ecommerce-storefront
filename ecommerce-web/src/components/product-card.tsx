@@ -1,67 +1,77 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Heart } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Star } from "lucide-react";
 import type { Product } from "@/lib/products";
 
-export function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product;
+  index?: number;
+  originalPrice?: number;
+}
+
+export function ProductCard({ product }: ProductCardProps) {
+  // Derive a "sale" discount percent (deterministic per product for UI only).
+  const hasDiscount = product.isSale;
+  const originalPrice = hasDiscount
+    ? Math.round(product.price * 1.2)
+    : undefined;
+  const discount = originalPrice
+    ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    : 0;
+  const rating = product.rating ?? 4.5;
+
   return (
-    <div className="group flex flex-col">
-      <Link
-        href={`/products/${product.slug}`}
-        className="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted"
+    <Link
+      href={`/products/${product.slug}`}
+      className="group flex flex-col"
+    >
+      <div
+        className="relative aspect-square w-full overflow-hidden rounded-[20px]"
+        style={{ backgroundColor: "var(--bg-soft)" }}
       >
         <Image
           src={product.image}
           alt={product.name}
           fill
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.04]"
         />
-        <div className="absolute left-3 top-3 flex flex-col gap-1">
-          {product.isNew && (
-            <Badge className="bg-foreground text-background">Nuevo</Badge>
-          )}
-          {product.isSale && <Badge variant="destructive">Sale</Badge>}
-        </div>
-        <Button
-          size="icon"
-          variant="secondary"
-          className="absolute right-3 top-3 h-8 w-8 rounded-full opacity-0 shadow transition-opacity group-hover:opacity-100"
-        >
-          <Heart className="h-4 w-4" />
-          <span className="sr-only">Añadir a favoritos</span>
-        </Button>
-      </Link>
+      </div>
 
-      <div className="mt-3 flex flex-col gap-1">
-        <p className="text-xs text-muted-foreground">{product.category}</p>
-        <Link
-          href={`/products/${product.slug}`}
-          className="text-sm font-medium hover:underline"
-        >
+      <div className="pt-4">
+        <h3 className="text-[18px] md:text-[20px] font-bold leading-tight line-clamp-1">
           {product.name}
-        </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">
-            ${product.price.toFixed(2)}
+        </h3>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => {
+              const fill = i < Math.round(rating);
+              return (
+                <Star
+                  key={i}
+                  className="h-[16px] w-[16px]"
+                  fill={fill ? "var(--star)" : "transparent"}
+                  style={{ color: "var(--star)" }}
+                  strokeWidth={fill ? 0 : 1.5}
+                />
+              );
+            })}
+          </div>
+          <span className="text-[13px] text-[color:var(--ink-soft)]">
+            {rating.toFixed(1)}
+            <span className="text-[color:var(--ink-faded)]"> /5</span>
           </span>
         </div>
-        <div className="mt-1 flex gap-1">
-          {product.colors.slice(0, 6).map((c) => {
-            const isHex = c.startsWith("#");
-            return (
-              <span
-                key={c}
-                className="h-3 w-3 rounded-full border"
-                style={isHex ? { backgroundColor: c } : undefined}
-                title={c}
-              />
-            );
-          })}
+        <div className="mt-2 flex items-center gap-2.5">
+          <span className="price">${product.price.toFixed(0)}</span>
+          {originalPrice ? (
+            <span className="price-strike">${originalPrice}</span>
+          ) : null}
+          {discount > 0 ? (
+            <span className="price-off">−{discount}%</span>
+          ) : null}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

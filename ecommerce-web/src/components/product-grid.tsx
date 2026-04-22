@@ -1,34 +1,44 @@
+import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/products";
 
 export function ProductGrid({
   products,
   title,
-  subtitle,
+  viewAllHref = "/products",
 }: {
   products: Product[];
   title?: string;
   subtitle?: string;
+  viewAllHref?: string;
+  lead?: boolean;
+  density?: "default" | "tight";
 }) {
+  if (products.length === 0) return null;
+
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      {title && (
-        <div className="mb-8 flex items-end justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {title}
-            </h2>
-            {subtitle && (
-              <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
-        {products.map((p) => (
+    <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 md:py-20 lg:px-8">
+      {title ? (
+        <h2 className="font-integral text-center text-[32px] md:text-[48px] leading-none mb-10 md:mb-14">
+          {title}
+        </h2>
+      ) : null}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
+        {products.slice(0, 4).map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
+      {title ? (
+        <div className="mt-10 flex justify-center">
+          <Link href={viewAllHref} className="btn-outline">
+            View All
+          </Link>
+        </div>
+      ) : null}
+      <div
+        className="mx-auto mt-16 h-px max-w-7xl"
+        style={{ backgroundColor: "var(--border)" }}
+      />
     </section>
   );
 }

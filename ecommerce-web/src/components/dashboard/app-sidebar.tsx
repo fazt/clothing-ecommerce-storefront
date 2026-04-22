@@ -5,11 +5,11 @@ import Link from "next/link";
 import {
   BarChart3,
   LayoutDashboard,
+  LifeBuoy,
   Package,
   Settings,
   ShieldUser,
   ShoppingBag,
-  Store,
   Users,
 } from "lucide-react";
 
@@ -28,22 +28,26 @@ import {
 import type { ApiUser } from "@/lib/api";
 
 const adminNavItems: NavMainItem[] = [
-  { title: "Resumen", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Reports", url: "/dashboard", icon: LayoutDashboard },
   {
-    title: "Catálogo",
+    title: "Library",
     url: "/dashboard/products",
     icon: Package,
     items: [
-      { title: "Productos", url: "/dashboard/products" },
-      { title: "Categorías", url: "/dashboard/categories" },
-      { title: "Descuentos", url: "/dashboard/discounts" },
+      { title: "Products", url: "/dashboard/products" },
+      { title: "Categories", url: "/dashboard/categories" },
+      { title: "Discounts", url: "/dashboard/discounts" },
     ],
   },
-  { title: "Órdenes", url: "/dashboard/orders", icon: ShoppingBag },
-  { title: "Clientes", url: "/dashboard/customers", icon: Users },
-  { title: "Analíticas", url: "/dashboard/analytics", icon: BarChart3 },
-  { title: "Usuarios", url: "/dashboard/users", icon: ShieldUser },
-  { title: "Ajustes", url: "/dashboard/settings", icon: Settings },
+  { title: "Orders", url: "/dashboard/orders", icon: ShoppingBag },
+  { title: "People", url: "/dashboard/customers", icon: Users },
+  { title: "Activities", url: "/dashboard/analytics", icon: BarChart3 },
+];
+
+const supportItems: NavMainItem[] = [
+  { title: "Get Started", url: "/dashboard/settings", icon: LifeBuoy },
+  { title: "Users", url: "/dashboard/users", icon: ShieldUser },
+  { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
 const userNavItems: NavMainItem[] = [
@@ -55,35 +59,46 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & { user: ApiUser }) {
   const isAdmin = user.role === "ADMIN";
-  const navItems = isAdmin ? adminNavItems : userNavItems;
-  const sectionLabel = isAdmin ? "Administración" : "Mi cuenta";
-  const accountTag = isAdmin ? "Admin" : "Cliente";
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="pb-2 pt-5">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
               tooltip="Atelier"
+              className="hover:bg-transparent data-[active=true]:bg-transparent"
               render={<Link href="/" />}
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-foreground text-background">
-                <Store className="size-4" />
+              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-[color:var(--a-accent-red)] text-white">
+                <span className="text-[10px] font-black tracking-[0.08em]">
+                  ATELIER
+                </span>
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Atelier</span>
-                <span className="truncate text-xs">{accountTag}</span>
+              <div className="grid flex-1 text-left leading-tight">
+                <span className="truncate text-base font-bold tracking-tight">
+                  Atelier
+                </span>
+                <span className="truncate text-xs text-[color:var(--a-ink-3)]">
+                  {isAdmin ? "Admin workspace" : "Mi cuenta"}
+                </span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain label={sectionLabel} items={navItems} />
+        {isAdmin ? (
+          <>
+            <NavMain label="Main" items={adminNavItems} />
+            <NavMain label="Support" items={supportItems} />
+          </>
+        ) : (
+          <NavMain label="Mi cuenta" items={userNavItems} />
+        )}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-[color:var(--a-border)]">
         <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />

@@ -1,0 +1,207 @@
+/* Analytics dashboard theme — Figma "Analytics Dashboard (Community)"
+ * Scope: everything inside `.analytics`.
+ */
+
+.analytics {
+  --a-bg: #f6f7f9;
+  --a-card: #ffffff;
+  --a-card-muted: #f5f6fa;
+  --a-border: #eef0f3;
+  --a-border-strong: #e4e7ec;
+  --a-ink: #0d1117;
+  --a-ink-2: #3a4250;
+  --a-ink-3: #64748b;
+  --a-ink-4: #9ca3af;
+  --a-primary: #4c6fff;
+  --a-primary-soft: #e8ecff;
+  --a-primary-deeper: #3656e5;
+  --a-good: #22c55e;
+  --a-good-soft: #d7f5e1;
+  --a-warn: #fb7d3a;
+  --a-warn-soft: #ffe9d9;
+  --a-down: #ef4444;
+  --a-down-soft: #fee2e2;
+  --a-accent-red: #e31837;
+  --a-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 1px 3px rgba(16, 24, 40, 0.06);
+  --a-shadow-card-lg: 0 4px 12px rgba(16, 24, 40, 0.06),
+    0 1px 3px rgba(16, 24, 40, 0.04);
+
+  background-color: var(--a-bg);
+  color: var(--a-ink);
+  font-family: var(--font-analytics, var(--font-body)), "Inter",
+    ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01", "tnum" 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .analytics {
+  --a-bg: #0d1117;
+  --a-card: #161b22;
+  --a-card-muted: #1c2230;
+  --a-border: #232936;
+  --a-border-strong: #2b3342;
+  --a-ink: #f5f7fa;
+  --a-ink-2: #d0d7e0;
+  --a-ink-3: #9aa5b5;
+  --a-ink-4: #6b7585;
+  --a-primary: #7090ff;
+  --a-primary-soft: rgba(76, 111, 255, 0.15);
+  --a-primary-deeper: #91a7ff;
+  --a-good: #4ade80;
+  --a-good-soft: rgba(34, 197, 94, 0.15);
+  --a-warn: #fb923c;
+  --a-warn-soft: rgba(251, 125, 58, 0.15);
+  --a-down: #f87171;
+  --a-down-soft: rgba(239, 68, 68, 0.15);
+  --a-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --a-shadow-card-lg: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Typographic utilities */
+.analytics .a-h1 {
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--a-ink);
+}
+.analytics .a-h2 {
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: var(--a-ink);
+}
+.analytics .a-stat {
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--a-ink);
+  font-variant-numeric: tabular-nums;
+}
+.analytics .a-muted {
+  color: var(--a-ink-3);
+}
+.analytics .a-muted-2 {
+  color: var(--a-ink-4);
+}
+
+/* Card */
+.analytics .a-card {
+  background-color: var(--a-card);
+  border: 1px solid var(--a-border);
+  border-radius: 20px;
+  box-shadow: var(--a-shadow-card);
+  padding: 24px;
+}
+.analytics .a-card-sm {
+  padding: 20px;
+  border-radius: 16px;
+}
+
+/* Pill dropdown */
+.analytics .a-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--a-card);
+  border: 1px solid var(--a-border);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--a-ink-2);
+  box-shadow: var(--a-shadow-card);
+  transition: border-color 0.15s ease;
+}
+.analytics .a-pill:hover {
+  border-color: var(--a-border-strong);
+}
+.analytics .a-pill-label {
+  color: var(--a-ink-3);
+}
+.analytics .a-pill-value {
+  color: var(--a-ink);
+  font-weight: 600;
+}
+
+/* Download button */
+.analytics .a-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: var(--a-card);
+  border: 1px solid var(--a-border-strong);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--a-ink);
+  box-shadow: var(--a-shadow-card);
+  transition: background 0.15s ease;
+}
+.analytics .a-btn-outline:hover {
+  background: var(--a-card-muted);
+}
+
+/* Delta chips */
+.analytics .a-delta-up {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-good-soft);
+  color: var(--a-good);
+  font-size: 12px;
+  font-weight: 600;
+}
+.analytics .a-delta-down {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--a-down-soft);
+  color: var(--a-down);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Sidebar overrides — make it bright-white with subtle active state */
+.analytics [data-slot="sidebar-wrapper"] {
+  --sidebar: var(--a-card);
+  --sidebar-foreground: var(--a-ink);
+  --sidebar-border: var(--a-border);
+  --sidebar-accent: var(--a-primary-soft);
+  --sidebar-accent-foreground: var(--a-primary);
+  --sidebar-primary: var(--a-primary);
+  --sidebar-primary-foreground: #fff;
+  --sidebar-ring: var(--a-primary);
+}
+.analytics [data-slot="sidebar-inner"] {
+  background: var(--a-card);
+}
+.analytics [data-sidebar="menu-button"][data-active="true"] {
+  background: var(--a-primary-soft);
+  color: var(--a-primary);
+}
+.analytics [data-sidebar="menu-button"][data-active="true"] svg {
+  color: var(--a-primary);
+}
+.analytics [data-sidebar="group-label"] {
+  color: var(--a-ink-4);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Focus */
+.analytics a:focus-visible,
+.analytics button:focus-visible {
+  outline: 2px solid var(--a-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}

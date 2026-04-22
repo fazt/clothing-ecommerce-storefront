@@ -1,0 +1,162 @@
+/* Storefront theme — SHOP.CO style
+ * Scope: everything inside `.shop-theme`.
+ */
+
+.shop-theme {
+  --bg: #ffffff;
+  --bg-soft: #f2f0f1;
+  --bg-muted: #f0f0f0;
+  --ink: #000000;
+  --ink-soft: rgba(0, 0, 0, 0.6);
+  --ink-faded: rgba(0, 0, 0, 0.4);
+  --border: rgba(0, 0, 0, 0.1);
+  --accent: #ff3333;
+  --star: #ffc633;
+
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .shop-theme {
+  --bg: #0b0b0b;
+  --bg-soft: #171717;
+  --bg-muted: #1a1a1a;
+  --ink: #f5f5f5;
+  --ink-soft: rgba(245, 245, 245, 0.7);
+  --ink-faded: rgba(245, 245, 245, 0.45);
+  --border: rgba(255, 255, 255, 0.12);
+  --accent: #ff5a5a;
+  --star: #ffc633;
+}
+
+/* Typography helpers */
+.shop-theme .font-display {
+  font-family: var(--font-display), "Archivo Black", "Arial Black", sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.shop-theme .font-integral {
+  font-family: var(--font-display), "Archivo Black", "Arial Black", sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.shop-theme .font-body {
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Pill button — filled black primary */
+.shop-theme .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.95rem 3rem;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.shop-theme .btn-primary:hover {
+  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--ink) 88%, white);
+}
+
+.shop-theme .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  padding: 0.85rem 3rem;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 9999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.shop-theme .btn-outline:hover {
+  background: var(--bg-soft);
+  border-color: color-mix(in oklab, var(--ink) 30%, transparent);
+}
+
+/* Star icon */
+.shop-theme .star {
+  color: var(--star);
+}
+
+/* Price styles */
+.shop-theme .price {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink);
+}
+.shop-theme .price-strike {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ink-faded);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+.shop-theme .price-off {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Hairline rule with soft color */
+.shop-theme .hairline {
+  border-color: var(--border);
+}
+
+/* Brand strip bg */
+.shop-theme .bg-ink {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+/* Focus ring */
+.shop-theme a:focus-visible,
+.shop-theme button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Utility reveals (kept subtle) */
+.shop-theme .reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: shop-reveal 0.7s cubic-bezier(0.2, 0.7, 0.15, 1) forwards;
+}
+@keyframes shop-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-theme .reveal {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

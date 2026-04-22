@@ -1,31 +1,35 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Mail } from "lucide-react";
 
 export function Newsletter() {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-      <div className="rounded-2xl bg-foreground px-6 py-12 text-background sm:px-12 sm:py-16">
-        <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Únete al club Atelier
+    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="bg-ink rounded-[20px] px-6 py-10 md:px-16 md:py-14">
+        <div className="grid gap-10 md:grid-cols-[1.2fr_1fr] md:items-center md:gap-16">
+          <h2 className="font-integral text-[color:var(--bg)] text-[32px] md:text-[40px] leading-[1.05] max-w-xl">
+            STAY UPTO DATE ABOUT
+            <br />
+            OUR LATEST OFFERS
           </h2>
-          <p className="text-sm opacity-80 sm:text-base">
-            Recibe 10% de descuento en tu primera compra y accede antes que
-            nadie a nuevas colecciones y ofertas exclusivas.
-          </p>
-          <form className="mt-2 flex w-full max-w-md flex-col gap-2 sm:flex-row">
-            <Input
-              type="email"
-              placeholder="tu@email.com"
-              className="bg-background text-foreground"
-            />
-            <Button variant="secondary" type="submit">
-              Suscribirme
-            </Button>
+          <form className="flex w-full flex-col gap-3">
+            <label
+              className="flex items-center gap-3 rounded-full bg-white px-5 py-3.5"
+            >
+              <Mail className="h-5 w-5 shrink-0 text-[color:var(--ink-faded)]" strokeWidth={1.5} />
+              <input
+                type="email"
+                required
+                placeholder="Enter your email address"
+                aria-label="Email"
+                className="w-full bg-transparent text-[14px] text-black placeholder:text-gray-500 focus:outline-none"
+              />
+            </label>
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3.5 text-[14px] font-medium text-black transition-colors hover:bg-white/90"
+            >
+              Subscribe to Newsletter
+            </button>
           </form>
-          <p className="text-xs opacity-60">
-            Al suscribirte aceptas nuestra política de privacidad.
-          </p>
         </div>
       </div>
     </section>
