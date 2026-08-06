@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AlertTriangle, Pencil, Plus } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { categoriesApi, type ApiCategory } from "@/lib/api";
 import { cn } from "@/lib/utils";

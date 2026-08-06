@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export interface ApiCategoryRef {
   id: string;
@@ -228,9 +229,11 @@ export interface UserCreateInput {
 }
 
 export interface UserUpdateInput {
+  email?: string;
   name?: string | null;
   role?: Role;
   password?: string;
+  currentPassword?: string;
 }
 
 export const AUTH_COOKIE = "auth-token";
@@ -249,6 +252,15 @@ async function authHeader(override?: string): Promise<Record<string, string>> {
   }
 }
 
+async function clearAuthCookieIfPossible(): Promise<void> {
+  try {
+    const store = await cookies();
+    store.delete(AUTH_COOKIE);
+  } catch {
+    // Outside a mutable request context — best-effort cleanup only.
+  }
+}
+
 async function handle<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.text();
@@ -259,12 +271,20 @@ async function handle<T>(res: Response): Promise<T> {
 }
 
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
-  const headers = { ...(init?.headers ?? {}), ...(await authHeader()) };
+  const auth = await authHeader();
+  const hadAuth = Boolean(auth.Authorization);
+  const headers = { ...(init?.headers ?? {}), ...auth };
   const res = await fetch(`${API_URL}${path}`, {
     cache: "no-store",
     ...init,
     headers,
   });
+  if (res.status === 401 && hadAuth) {
+    // Token expired or invalid on a server read — log out cleanly instead of
+    // surfacing a render-time error in the RSC.
+    await clearAuthCookieIfPossible();
+    redirect("/login");
+  }
   return handle<T>(res);
 }
 

@@ -6,11 +6,13 @@ import {
   BarChart3,
   LayoutDashboard,
   LifeBuoy,
+  MessageSquare,
   Package,
   Settings,
   ShieldUser,
   ShoppingBag,
   Users,
+  User,
 } from "lucide-react";
 
 import { NavMain, type NavMainItem } from "@/components/dashboard/nav-main";
@@ -42,6 +44,7 @@ const adminNavItems: NavMainItem[] = [
   { title: "Orders", url: "/dashboard/orders", icon: ShoppingBag },
   { title: "People", url: "/dashboard/customers", icon: Users },
   { title: "Activities", url: "/dashboard/analytics", icon: BarChart3 },
+  { title: "Chat", url: "/dashboard/chat", icon: MessageSquare },
 ];
 
 const supportItems: NavMainItem[] = [
@@ -51,6 +54,7 @@ const supportItems: NavMainItem[] = [
 ];
 
 const userNavItems: NavMainItem[] = [
+  { title: "Perfil", url: "/dashboard/profile", icon: User },
   { title: "Mis pedidos", url: "/dashboard/my-orders", icon: ShoppingBag },
 ];
 

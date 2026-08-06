@@ -93,10 +93,10 @@ export function NavUser({ user }: { user: ApiUser }) {
                 Ver tienda
               </DropdownMenuItem>
               <DropdownMenuItem
-                render={<Link href="/dashboard/settings" />}
+                render={<Link href="/dashboard/profile" />}
               >
                 <BadgeCheck />
-                Cuenta
+                Perfil
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
