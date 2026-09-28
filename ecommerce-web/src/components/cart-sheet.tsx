@@ -13,6 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useCart, type CartItem } from "@/components/cart-provider";
+import { shopFontVariables } from "@/lib/fonts";
 
 export function CartSheet() {
   const { items, count, subtotal, hydrated, setQuantity, removeItem } = useCart();
@@ -31,12 +32,15 @@ export function CartSheet() {
         ) : null}
         <span className="sr-only">Carrito</span>
       </SheetTrigger>
+      {/* Portaled outside the store layout, so it re-applies the store theme. */}
       <SheetContent
         side="right"
-        className="flex w-full flex-col sm:max-w-md"
+        className={`shop-theme ${shopFontVariables} flex w-full flex-col sm:max-w-md`}
       >
         <SheetHeader>
-          <SheetTitle>Tu carrito ({hydrated ? count : 0})</SheetTitle>
+          <SheetTitle className="font-body">
+            Tu carrito ({hydrated ? count : 0})
+          </SheetTitle>
         </SheetHeader>
         {!hydrated ? null : items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">

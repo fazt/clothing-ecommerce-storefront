@@ -1,7 +1,6 @@
 import {
   BarChart3,
   LayoutDashboard,
-  LifeBuoy,
   MessageSquare,
   Package,
   Settings,
@@ -32,7 +31,6 @@ export const adminNavItems: NavMainItem[] = [
 ];
 
 export const supportItems: NavMainItem[] = [
-  { title: "Get Started", url: "/dashboard/settings", icon: LifeBuoy },
   { title: "Users", url: "/dashboard/users", icon: ShieldUser },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];

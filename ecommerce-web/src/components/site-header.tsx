@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { CartSheet } from "@/components/cart-sheet";
 import { LogoutButton } from "@/components/logout-button";
 import type { ApiUser } from "@/lib/api";
+import { shopFontVariables } from "@/lib/fonts";
 
 const navLinks = [
   { href: "/products", label: "Shop" },
@@ -37,7 +38,11 @@ export function SiteHeader({ user }: { user: ApiUser | null }) {
             <Menu className="h-5 w-5" strokeWidth={2} />
             <span className="sr-only">Abrir menú</span>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 bg-[color:var(--bg)] p-8">
+          {/* Portaled outside the store layout, so it re-applies the store theme. */}
+          <SheetContent
+            side="left"
+            className={`shop-theme ${shopFontVariables} w-80 bg-[color:var(--bg)] p-8`}
+          >
             <SheetHeader className="px-0">
               <SheetTitle className="font-integral text-[24px]">
                 SHOP.CO

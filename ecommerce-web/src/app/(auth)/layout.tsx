@@ -1,20 +1,7 @@
 import Link from "next/link";
-import { Archivo_Black, Manrope } from "next/font/google";
+import { shopFontVariables } from "@/lib/fonts";
 import "../(store)/editorial.css";
 import "./auth.css";
-
-const display = Archivo_Black({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-display",
-  display: "swap",
-});
-
-const body = Manrope({
-  subsets: ["latin"],
-  variable: "--font-body",
-  display: "swap",
-});
 
 export default function AuthLayout({
   children,
@@ -23,7 +10,7 @@ export default function AuthLayout({
 }>) {
   return (
     <div
-      className={`shop-theme min-h-screen flex flex-col ${display.variable} ${body.variable}`}
+      className={`shop-theme min-h-screen flex flex-col ${shopFontVariables}`}
     >
       <header className="border-b" style={{ borderColor: "var(--border)" }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
