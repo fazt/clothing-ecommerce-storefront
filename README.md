@@ -15,9 +15,13 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 |---|---|
 | ![Catálogo](docs/screenshots/products-grid.png) | ![Detalle de producto](docs/screenshots/product-detail.png) |
 
-| Checkout con PayPal | Home (tema oscuro) |
+| Carrito | Checkout con PayPal |
 |---|---|
-| ![Checkout](docs/screenshots/checkout.png) | ![Home tema oscuro](docs/screenshots/home-dark.png) |
+| ![Carrito](docs/screenshots/cart.png) | ![Checkout](docs/screenshots/checkout.png) |
+
+| Home (tema oscuro) |
+|---|
+| ![Home tema oscuro](docs/screenshots/home-dark.png) |
 
 | Mobile: home | Mobile: producto | Mobile: checkout |
 |---|---|---|
@@ -49,9 +53,9 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 |---|---|
 | ![Perfil](docs/screenshots/dashboard-profile.png) | ![Chat](docs/screenshots/dashboard-chat.png) |
 
-| Command palette (`⌘K` / `Ctrl+K`) |
-|---|
-| ![Command palette](docs/screenshots/command-palette.png) |
+| Ajustes | Command palette (`⌘K` / `Ctrl+K`) |
+|---|---|
+| ![Ajustes](docs/screenshots/dashboard-settings.png) | ![Command palette](docs/screenshots/command-palette.png) |
 
 ### Auth y panel del cliente
 
