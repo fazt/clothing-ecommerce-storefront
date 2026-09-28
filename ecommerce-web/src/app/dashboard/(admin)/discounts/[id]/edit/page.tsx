@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { discountsApi } from "@/lib/api";
 import { DiscountForm } from "../../discount-form";
-import { updateDiscountAction } from "../../actions";
 
 export default async function EditDiscountPage({
   params,
@@ -12,17 +11,12 @@ export default async function EditDiscountPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let discount;
-  try {
-    discount = await discountsApi.get(id);
-  } catch {
-    notFound();
-  }
-
-  async function action(formData: FormData) {
-    "use server";
-    await updateDiscountAction(id, formData);
-  }
+  const discount = await discountsApi.get(id).catch((e: unknown) => {
+    // Keep the login redirect `discountsApi` throws on a 401.
+    unstable_rethrow(e);
+    return null;
+  });
+  if (!discount) notFound();
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -33,15 +27,8 @@ export default async function EditDiscountPage({
         <ChevronLeft className="h-4 w-4" />
         Volver a descuentos
       </Link>
-      <PageHeader
-        title={`Editar: ${discount.code}`}
-        description="Modifica el descuento."
-      />
-      <DiscountForm
-        initial={discount}
-        action={action}
-        submitLabel="Guardar cambios"
-      />
+      <PageHeader title={`Editar: ${discount.code}`} description="Modifica el descuento." />
+      <DiscountForm initial={discount} />
     </div>
   );
 }

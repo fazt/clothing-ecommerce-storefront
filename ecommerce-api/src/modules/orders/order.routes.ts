@@ -1,22 +1,21 @@
 import { Router } from "express";
 import { orderController } from "./order.controller";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { validate } from "../../lib/validate";
+import { idParams } from "../../lib/pagination";
+import { createOrderBody, listOrdersQuery, updateOrderBody } from "./order.schema";
 
+// Mounted behind requireAuth + requireAdmin. A customer's own orders live
+// under GET /me/orders.
 const router = Router();
 
-// Authenticated user (any role): own orders
-router.get("/mine", requireAuth, orderController.listMine);
-
-// Admin-only
-router.get("/", requireAuth, requireAdmin, orderController.list);
-router.get("/:id", requireAuth, requireAdmin, orderController.getById);
-router.post("/", requireAuth, requireAdmin, orderController.create);
+router.get("/", validate({ query: listOrdersQuery }), orderController.list);
+router.get("/:id", validate({ params: idParams }), orderController.getById);
+router.post("/", validate({ body: createOrderBody }), orderController.create);
 router.patch(
-  "/:id/status",
-  requireAuth,
-  requireAdmin,
-  orderController.updateStatus,
+  "/:id",
+  validate({ params: idParams, body: updateOrderBody }),
+  orderController.update,
 );
-router.delete("/:id", requireAuth, requireAdmin, orderController.remove);
+router.delete("/:id", validate({ params: idParams }), orderController.remove);
 
 export default router;

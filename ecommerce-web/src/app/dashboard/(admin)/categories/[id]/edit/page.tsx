@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { categoriesApi } from "@/lib/api";
 import { CategoryForm } from "../../category-form";
-import { updateCategoryAction } from "../../actions";
 
 export default async function EditCategoryPage({
   params,
@@ -12,17 +11,12 @@ export default async function EditCategoryPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let category;
-  try {
-    category = await categoriesApi.get(id);
-  } catch {
-    notFound();
-  }
-
-  async function action(formData: FormData) {
-    "use server";
-    await updateCategoryAction(id, formData);
-  }
+  const category = await categoriesApi.get(id).catch((e: unknown) => {
+    // Keep the login redirect `categoriesApi` throws on a 401.
+    unstable_rethrow(e);
+    return null;
+  });
+  if (!category) notFound();
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -37,11 +31,7 @@ export default async function EditCategoryPage({
         title={`Editar: ${category.name}`}
         description="Actualiza los datos de la categoría."
       />
-      <CategoryForm
-        initial={category}
-        action={action}
-        submitLabel="Guardar cambios"
-      />
+      <CategoryForm initial={category} />
     </div>
   );
 }

@@ -1,114 +1,87 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-
-export interface ProductVariantInput {
-  id?: string;
-  size?: string | null;
-  color?: string | null;
-  sku?: string | null;
-  stock?: number;
-  price?: number | string | null;
-}
-
-export interface ProductInput {
-  name: string;
-  description?: string | null;
-  price: number | string;
-  stock?: number;
-  imageUrl?: string | null;
-  images?: string[];
-  isNew?: boolean;
-  isSale?: boolean;
-  isFeatured?: boolean;
-  categoryId?: string | null;
-  variants?: ProductVariantInput[];
-}
+import { contains, pageArgs, paginated } from "../../lib/pagination";
+import {
+  LOW_STOCK_THRESHOLD,
+  type CreateProductInput,
+  type ListProductsQuery,
+  type ProductVariantInput,
+  type UpdateProductInput,
+} from "./product.schema";
 
 const productInclude = {
   category: { select: { id: true, name: true, slug: true } },
   variants: { orderBy: { createdAt: "asc" } },
 } as const;
 
-function mapVariantCreate(v: ProductVariantInput) {
+function mapVariant(v: ProductVariantInput) {
   return {
     size: v.size ?? null,
     color: v.color ?? null,
-    sku: v.sku?.trim() ? v.sku.trim() : null,
-    stock: typeof v.stock === "number" ? v.stock : Number(v.stock) || 0,
-    price:
-      v.price === null || v.price === undefined || v.price === ""
-        ? null
-        : v.price,
+    sku: v.sku ?? null,
+    stock: v.stock,
+    price: v.price ?? null,
   };
 }
 
+function stockWhere(stock: ListProductsQuery["stock"]): Prisma.ProductWhereInput {
+  switch (stock) {
+    case "out":
+      return { stock: { lte: 0 } };
+    case "low":
+      return { stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } };
+    case "in":
+      return { stock: { gte: LOW_STOCK_THRESHOLD } };
+    default:
+      return {};
+  }
+}
+
 export const productService = {
-  findAll: () =>
-    prisma.product.findMany({
-      orderBy: { createdAt: "desc" },
-      include: productInclude,
-    }),
+  findAll: async (query: ListProductsQuery) => {
+    const where: Prisma.ProductWhereInput = {
+      ...stockWhere(query.stock),
+      ...(query.categoryId && { categoryId: query.categoryId }),
+      ...(query.search && {
+        OR: [{ name: contains(query.search) }, { description: contains(query.search) }],
+      }),
+    };
+    const [products, total] = await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: productInclude,
+        ...pageArgs(query),
+      }),
+      prisma.product.count({ where }),
+    ]);
+    return paginated(products, total, query);
+  },
 
   findById: (id: string) =>
     prisma.product.findUnique({ where: { id }, include: productInclude }),
 
-  create: async (data: ProductInput) => {
-    const {
-      variants,
-      images,
-      isNew,
-      isSale,
-      isFeatured,
-      categoryId,
-      ...rest
-    } = data;
-    return prisma.product.create({
+  create: async ({ variants, ...data }: CreateProductInput) =>
+    prisma.product.create({
       data: {
-        ...rest,
-        images: images ?? [],
-        isNew: !!isNew,
-        isSale: !!isSale,
-        isFeatured: !!isFeatured,
-        categoryId: categoryId || null,
-        variants: variants && variants.length > 0
-          ? { create: variants.map(mapVariantCreate) }
-          : undefined,
+        ...data,
+        variants:
+          variants && variants.length > 0
+            ? { create: variants.map(mapVariant) }
+            : undefined,
       },
       include: productInclude,
-    });
-  },
+    }),
 
-  update: async (id: string, data: Partial<ProductInput>) => {
-    const {
-      variants,
-      images,
-      isNew,
-      isSale,
-      isFeatured,
-      categoryId,
-      ...rest
-    } = data;
-
-    return prisma.$transaction(async (tx) => {
-      await tx.product.update({
-        where: { id },
-        data: {
-          ...rest,
-          ...(images !== undefined && { images }),
-          ...(isNew !== undefined && { isNew }),
-          ...(isSale !== undefined && { isSale }),
-          ...(isFeatured !== undefined && { isFeatured }),
-          ...(categoryId !== undefined && { categoryId: categoryId || null }),
-        },
-      });
+  update: async (id: string, { variants, ...data }: UpdateProductInput) =>
+    prisma.$transaction(async (tx) => {
+      await tx.product.update({ where: { id }, data });
 
       if (variants !== undefined) {
         await tx.productVariant.deleteMany({ where: { productId: id } });
         if (variants.length > 0) {
           await tx.productVariant.createMany({
-            data: variants.map((v) => ({
-              productId: id,
-              ...mapVariantCreate(v),
-            })),
+            data: variants.map((v) => ({ productId: id, ...mapVariant(v) })),
           });
         }
       }
@@ -117,8 +90,7 @@ export const productService = {
         where: { id },
         include: productInclude,
       });
-    });
-  },
+    }),
 
   remove: (id: string) => prisma.product.delete({ where: { id } }),
 };

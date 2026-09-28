@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import { categoryService } from "./category.service";
+import type {
+  CreateCategoryInput,
+  ListCategoriesQuery,
+  UpdateCategoryInput,
+} from "./category.schema";
 
 export const categoryController = {
-  list: async (_req: Request, res: Response) => {
+  list: async (req: Request, res: Response) => {
     try {
-      const categories = await categoryService.findAll();
-      res.json(categories);
+      res.json(await categoryService.findAll(req.query as unknown as ListCategoriesQuery));
     } catch {
       res.status(500).json({ error: "Failed to fetch categories" });
     }
@@ -23,15 +27,11 @@ export const categoryController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { slug, name, image, isVisible } = req.body;
-      if (!slug || !name) {
-        return res.status(400).json({ error: "slug and name are required" });
-      }
-      const category = await categoryService.create({ slug, name, image, isVisible });
+      const category = await categoryService.create(req.body as CreateCategoryInput);
       res.status(201).json(category);
     } catch (error: any) {
       if (error.code === "P2002") {
-        return res.status(409).json({ error: "Slug already exists" });
+        return res.status(409).json({ error: "Ya existe una categoría con ese slug" });
       }
       res.status(500).json({ error: "Failed to create category" });
     }
@@ -39,14 +39,17 @@ export const categoryController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const category = await categoryService.update(String(req.params.id), req.body);
+      const category = await categoryService.update(
+        String(req.params.id),
+        req.body as UpdateCategoryInput,
+      );
       res.json(category);
     } catch (error: any) {
       if (error.code === "P2025") {
         return res.status(404).json({ error: "Category not found" });
       }
       if (error.code === "P2002") {
-        return res.status(409).json({ error: "Slug already exists" });
+        return res.status(409).json({ error: "Ya existe una categoría con ese slug" });
       }
       res.status(500).json({ error: "Failed to update category" });
     }

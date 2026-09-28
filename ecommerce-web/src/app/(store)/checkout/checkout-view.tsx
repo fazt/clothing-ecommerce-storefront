@@ -1,17 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/components/cart-provider";
 import { cn } from "@/lib/utils";
-import { startPaypalCheckoutAction } from "./actions";
+import { api, ApiError } from "@/lib/api-client";
+
+function checkoutErrorMessage(e: unknown): string {
+  if (!(e instanceof ApiError)) return "No se pudo iniciar el pago con PayPal.";
+  if (e.code === "PAYPAL_NOT_CONFIGURED") {
+    return "PayPal aún no está configurado. Añade PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET al .env de la API.";
+  }
+  if (e.status === 502) {
+    return "PayPal rechazó la solicitud. Revisa que las credenciales sean del entorno sandbox correcto.";
+  }
+  if (e.status === 0 || e.status === 400 || e.status === 404) return e.message;
+  return "No se pudo iniciar el pago con PayPal.";
+}
 
 export function CheckoutView() {
   const { items, subtotal, hydrated, setQuantity, removeItem } = useCart();
-  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!hydrated) {
@@ -50,14 +64,20 @@ export function CheckoutView() {
       sizeLabel: i.sizeLabel ?? null,
       colorLabel: i.colorLabel ?? null,
     }));
-    startTransition(async () => {
-      const result = await startPaypalCheckoutAction(payload);
-      if (result.ok) {
-        window.location.href = result.approveUrl;
-      } else {
-        setError(result.error);
-      }
-    });
+    setPending(true);
+    api.payments.createPaypalOrder(payload).then(
+      ({ approveUrl }) => {
+        window.location.href = approveUrl;
+      },
+      (e: unknown) => {
+        setPending(false);
+        if (e instanceof ApiError && e.status === 401) {
+          router.push("/login?next=/checkout");
+          return;
+        }
+        setError(checkoutErrorMessage(e));
+      },
+    );
   }
 
   return (

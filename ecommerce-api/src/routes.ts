@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authRoutes } from "./modules/auth";
+import { meRoutes } from "./modules/me";
 import { productRoutes } from "./modules/products";
 import { categoryRoutes } from "./modules/categories";
 import { customerRoutes } from "./modules/customers";
@@ -14,14 +15,15 @@ import { requireAuth, requireAdmin } from "./middleware/auth";
 const router = Router();
 
 router.use("/auth", authRoutes);
+router.use("/me", requireAuth, meRoutes);
 router.use("/products", productRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/customers", requireAuth, requireAdmin, customerRoutes);
-router.use("/orders", orderRoutes);
+router.use("/orders", requireAuth, requireAdmin, orderRoutes);
 router.use("/discounts", requireAuth, requireAdmin, discountRoutes);
 router.use("/analytics", requireAuth, requireAdmin, analyticsRoutes);
 router.use("/users", requireAuth, requireAdmin, userRoutes);
 router.use("/payments", paymentRoutes);
-router.use("/storage", storageRoutes);
+router.use("/uploads", storageRoutes);
 
 export default router;

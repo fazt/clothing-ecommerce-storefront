@@ -2,20 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  BarChart3,
-  LayoutDashboard,
-  LifeBuoy,
-  MessageSquare,
-  Package,
-  Settings,
-  ShieldUser,
-  ShoppingBag,
-  Users,
-  User,
-} from "lucide-react";
 
-import { NavMain, type NavMainItem } from "@/components/dashboard/nav-main";
+import { NavMain } from "@/components/dashboard/nav-main";
+import { adminNavItems, supportItems, userNavItems } from "@/components/dashboard/nav-config";
 import { NavUser } from "@/components/dashboard/nav-user";
 import {
   Sidebar,
@@ -28,35 +17,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import type { ApiUser } from "@/lib/api";
-
-const adminNavItems: NavMainItem[] = [
-  { title: "Reports", url: "/dashboard", icon: LayoutDashboard },
-  {
-    title: "Library",
-    url: "/dashboard/products",
-    icon: Package,
-    items: [
-      { title: "Products", url: "/dashboard/products" },
-      { title: "Categories", url: "/dashboard/categories" },
-      { title: "Discounts", url: "/dashboard/discounts" },
-    ],
-  },
-  { title: "Orders", url: "/dashboard/orders", icon: ShoppingBag },
-  { title: "People", url: "/dashboard/customers", icon: Users },
-  { title: "Activities", url: "/dashboard/analytics", icon: BarChart3 },
-  { title: "Chat", url: "/dashboard/chat", icon: MessageSquare },
-];
-
-const supportItems: NavMainItem[] = [
-  { title: "Get Started", url: "/dashboard/settings", icon: LifeBuoy },
-  { title: "Users", url: "/dashboard/users", icon: ShieldUser },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
-];
-
-const userNavItems: NavMainItem[] = [
-  { title: "Perfil", url: "/dashboard/profile", icon: User },
-  { title: "Mis pedidos", url: "/dashboard/my-orders", icon: ShoppingBag },
-];
 
 export function AppSidebar({
   user,

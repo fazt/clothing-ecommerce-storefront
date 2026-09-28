@@ -1,23 +1,27 @@
-import { Search, Download, Eye, AlertTriangle } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { ordersApi, type ApiOrder } from "@/lib/api";
-import { OrderStatusSelect } from "./order-status-select";
-import { cn } from "@/lib/utils";
+import { ordersApi, type OrderStatus } from "@/lib/api";
+import { OrdersTable } from "./orders-table";
 
-async function loadOrders(): Promise<
-  { ok: true; orders: ApiOrder[] } | { ok: false; error: string }
-> {
+async function loadStats() {
   try {
-    return { ok: true, orders: await ordersApi.list() };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+    const orders = await ordersApi.listAll();
+    const count = (status: OrderStatus) => orders.filter((o) => o.status === status).length;
+    return [
+      { label: "Todas", value: orders.length },
+      { label: "Pendientes", value: count("PENDING") },
+      { label: "En preparación", value: count("PROCESSING") },
+      { label: "Enviadas", value: count("SHIPPED") },
+      { label: "Entregadas", value: count("DELIVERED") },
+    ];
+  } catch {
+    return null;
   }
 }
 
 export default async function DashboardOrdersPage() {
-  const result = await loadOrders();
+  const stats = await loadStats();
 
   return (
     <div className="mx-auto w-full max-w-7xl">
@@ -31,163 +35,17 @@ export default async function DashboardOrdersPage() {
           </Button>
         }
       />
-      {!result.ok ? (
-        <ApiError message={result.error} />
-      ) : (
-        <OrdersContent orders={result.orders} />
-      )}
-    </div>
-  );
-}
-
-function ApiError({ message }: { message: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-10 text-center">
-      <AlertTriangle className="h-8 w-8 text-destructive" />
-      <p className="font-semibold">No se pudo conectar con la API</p>
-      <p className="max-w-md text-sm text-muted-foreground">{message}</p>
-    </div>
-  );
-}
-
-function OrdersContent({ orders }: { orders: ApiOrder[] }) {
-  const totals = {
-    all: orders.length,
-    pending: orders.filter((o) => o.status === "PENDING").length,
-    processing: orders.filter((o) => o.status === "PROCESSING").length,
-    shipped: orders.filter((o) => o.status === "SHIPPED").length,
-    delivered: orders.filter((o) => o.status === "DELIVERED").length,
-  };
-
-  return (
-    <>
-      <div className="mb-4 flex flex-wrap gap-2 border-b pb-3">
-        <TabChip label="Todas" count={totals.all} active />
-        <TabChip label="Pendientes" count={totals.pending} />
-        <TabChip label="En preparación" count={totals.processing} />
-        <TabChip label="Enviadas" count={totals.shipped} />
-        <TabChip label="Entregadas" count={totals.delivered} />
-      </div>
-
-      <div className="rounded-lg border bg-background">
-        <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center">
-          <div className="relative flex-1 md:max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar por número, cliente..." className="pl-9" />
-          </div>
-          <div className="flex gap-2">
-            <select className="h-8 rounded-md border bg-background px-3 text-sm">
-              <option>Todas las fechas</option>
-              <option>Hoy</option>
-              <option>Últimos 7 días</option>
-              <option>Últimos 30 días</option>
-            </select>
-          </div>
+      {stats ? (
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-lg border bg-background p-4">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className="mt-2 text-2xl font-bold">{s.value}</p>
+            </div>
+          ))}
         </div>
-
-        {orders.length === 0 ? (
-          <div className="p-12 text-center text-sm text-muted-foreground">
-            No hay órdenes todavía.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="py-3 pl-4 font-medium">Orden</th>
-                  <th className="py-3 font-medium">Cliente</th>
-                  <th className="py-3 font-medium">Fecha</th>
-                  <th className="py-3 font-medium">Método</th>
-                  <th className="py-3 font-medium">Items</th>
-                  <th className="py-3 font-medium">Estado</th>
-                  <th className="py-3 text-right font-medium">Total</th>
-                  <th className="w-10 py-3 pr-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => {
-                  const itemsCount = o.items.reduce(
-                    (s, i) => s + i.quantity,
-                    0,
-                  );
-                  return (
-                    <tr
-                      key={o.id}
-                      className="border-b last:border-0 hover:bg-muted/30"
-                    >
-                      <td className="py-3 pl-4 font-mono text-[11px]">
-                        #{o.id.slice(0, 8).toUpperCase()}
-                      </td>
-                      <td className="py-3">
-                        <p className="font-medium">{o.customer.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {o.customer.email}
-                        </p>
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {new Date(o.createdAt).toLocaleDateString("es-ES", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="py-3 text-muted-foreground">
-                        {o.paymentMethod}
-                      </td>
-                      <td className="py-3">{itemsCount}</td>
-                      <td className="py-3">
-                        <OrderStatusSelect
-                          orderId={o.id}
-                          status={o.status}
-                        />
-                      </td>
-                      <td className="py-3 text-right font-semibold">
-                        ${Number(o.total).toFixed(2)}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <Button variant="ghost" size="icon-sm">
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-function TabChip({
-  label,
-  count,
-  active,
-}: {
-  label: string;
-  count: number;
-  active?: boolean;
-}) {
-  return (
-    <button
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border bg-background text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {label}
-      <span
-        className={cn(
-          "rounded-full px-1.5 text-[10px] font-semibold",
-          active ? "bg-background/20" : "bg-muted",
-        )}
-      >
-        {count}
-      </span>
-    </button>
+      ) : null}
+      <OrdersTable />
+    </div>
   );
 }

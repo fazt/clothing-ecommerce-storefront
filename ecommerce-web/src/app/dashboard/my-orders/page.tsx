@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, ShoppingBag } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { ordersApi, type ApiOrder } from "@/lib/api";
+import { meApi, type ApiOrder } from "@/lib/api";
 import { orderStatusStyles } from "@/lib/status-ui";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +10,7 @@ async function loadMyOrders(): Promise<
   { ok: true; orders: ApiOrder[] } | { ok: false; error: string }
 > {
   try {
-    return { ok: true, orders: await ordersApi.listMine() };
+    return { ok: true, orders: await meApi.ordersAll() };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error" };
   }

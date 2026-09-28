@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Menu, Power, Search, User } from "lucide-react";
+import { Menu, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartSheet } from "@/components/cart-sheet";
-import { logoutAction } from "@/app/(auth)/actions";
+import { LogoutButton } from "@/components/logout-button";
 import type { ApiUser } from "@/lib/api";
 
 const navLinks = [
@@ -116,18 +116,7 @@ export function SiteHeader({ user }: { user: ApiUser | null }) {
                   Dashboard
                 </Link>
               ) : null}
-              <form action={logoutAction}>
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  size="icon"
-                  className="text-[color:var(--ink)] hover:bg-transparent"
-                  title="Cerrar sesión"
-                >
-                  <Power className="h-5 w-5" strokeWidth={2} />
-                  <span className="sr-only">Cerrar sesión</span>
-                </Button>
-              </form>
+              <LogoutButton />
             </div>
           ) : (
             <Link

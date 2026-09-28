@@ -1,11 +1,15 @@
 import { Request, Response } from "express";
 import { customerService } from "./customer.service";
+import type {
+  CreateCustomerInput,
+  ListCustomersQuery,
+  UpdateCustomerInput,
+} from "./customer.schema";
 
 export const customerController = {
-  list: async (_req: Request, res: Response) => {
+  list: async (req: Request, res: Response) => {
     try {
-      const customers = await customerService.findAll();
-      res.json(customers);
+      res.json(await customerService.findAll(req.query as unknown as ListCustomersQuery));
     } catch {
       res.status(500).json({ error: "Failed to fetch customers" });
     }
@@ -23,15 +27,11 @@ export const customerController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { email, name } = req.body;
-      if (!email || !name) {
-        return res.status(400).json({ error: "email and name are required" });
-      }
-      const c = await customerService.create({ email, name });
+      const c = await customerService.create(req.body as CreateCustomerInput);
       res.status(201).json(c);
     } catch (error: any) {
       if (error.code === "P2002") {
-        return res.status(409).json({ error: "Email already exists" });
+        return res.status(409).json({ error: "Ya existe un cliente con ese email" });
       }
       res.status(500).json({ error: "Failed to create customer" });
     }
@@ -39,11 +39,14 @@ export const customerController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const c = await customerService.update(String(req.params.id), req.body);
+      const c = await customerService.update(String(req.params.id), req.body as UpdateCustomerInput);
       res.json(c);
     } catch (error: any) {
       if (error.code === "P2025") {
         return res.status(404).json({ error: "Customer not found" });
+      }
+      if (error.code === "P2002") {
+        return res.status(409).json({ error: "Ya existe un cliente con ese email" });
       }
       res.status(500).json({ error: "Failed to update customer" });
     }
@@ -56,6 +59,11 @@ export const customerController = {
     } catch (error: any) {
       if (error.code === "P2025") {
         return res.status(404).json({ error: "Customer not found" });
+      }
+      if (error.code === "P2003") {
+        return res
+          .status(409)
+          .json({ error: "No se puede eliminar un cliente con pedidos" });
       }
       res.status(500).json({ error: "Failed to delete customer" });
     }

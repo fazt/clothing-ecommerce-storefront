@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,43 +12,46 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FieldError, FormAlert } from "@/components/form-message";
+import { selectClassName } from "@/components/dashboard/data-table";
+import { useApiForm } from "@/hooks/use-api-form";
+import { api } from "@/lib/api-client";
+import type { ApiUser } from "@/lib/api-types";
+import { formValues } from "@/lib/form-values";
+import { userCreateSchema, userUpdateSchema } from "@/lib/schemas/user";
 import { cn } from "@/lib/utils";
-import type { ApiUser } from "@/lib/api";
 
+// Same form for create and edit; `initial` switches it to edit mode.
 export function UserForm({
   initial,
-  action,
-  submitLabel,
-  mode,
   isSelf = false,
 }: {
   initial?: ApiUser;
-  action: (formData: FormData) => Promise<void>;
-  submitLabel: string;
-  mode: "create" | "edit";
   isSelf?: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function onSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await action(formData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error al guardar");
-      }
-    });
-  }
+  const router = useRouter();
+  const mode = initial ? "edit" : "create";
+  const onSuccess = () => {
+    router.push("/dashboard/users");
+    router.refresh();
+  };
+  const create = useApiForm(userCreateSchema, (v) => api.users.create(v), onSuccess);
+  // A disabled role select isn't submitted, so self-edits never send a role.
+  const update = useApiForm(userUpdateSchema, (v) => api.users.update(initial!.id, v), onSuccess);
+  const { pending, errors, formError, run } = mode === "create" ? create : update;
 
   return (
-    <form action={onSubmit} className="space-y-6">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run(formValues(e.currentTarget));
+      }}
+      className="space-y-6"
+    >
       <Card>
         <CardHeader>
-          <CardTitle>
-            {mode === "create" ? "Nuevo usuario" : "Datos del usuario"}
-          </CardTitle>
+          <CardTitle>{mode === "create" ? "Nuevo usuario" : "Datos del usuario"}</CardTitle>
           <CardDescription>
             {mode === "create"
               ? "Crea una cuenta con rol USER o ADMIN."
@@ -56,7 +59,7 @@ export function UserForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-2 md:gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre</Label>
               <Input
@@ -64,40 +67,40 @@ export function UserForm({
                 name="name"
                 defaultValue={initial?.name ?? ""}
                 placeholder="Nombre y apellido"
+                aria-invalid={errors.name ? true : undefined}
               />
+              <FieldError message={errors.name} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email{mode === "create" ? " *" : ""}</Label>
               <Input
                 id="email"
-                name="email"
+                name={mode === "create" ? "email" : undefined}
                 type="email"
-                required={mode === "create"}
                 defaultValue={initial?.email ?? ""}
                 placeholder="usuario@ejemplo.com"
                 readOnly={mode === "edit"}
                 className={mode === "edit" ? "bg-muted/50" : undefined}
+                aria-invalid={errors.email ? true : undefined}
               />
+              <FieldError message={errors.email} />
             </div>
           </div>
 
-          <div className="grid gap-2 md:grid-cols-2 md:gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="password">
-                Contraseña{mode === "create" ? " *" : ""}
-              </Label>
+              <Label htmlFor="password">Contraseña{mode === "create" ? " *" : ""}</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                required={mode === "create"}
-                minLength={6}
+                autoComplete="new-password"
                 placeholder={
-                  mode === "create"
-                    ? "Al menos 6 caracteres"
-                    : "Dejar vacío para mantener la actual"
+                  mode === "create" ? "Al menos 6 caracteres" : "Dejar vacío para mantener la actual"
                 }
+                aria-invalid={errors.password ? true : undefined}
               />
+              <FieldError message={errors.password} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="role">Rol</Label>
@@ -106,36 +109,29 @@ export function UserForm({
                 name="role"
                 defaultValue={initial?.role ?? "USER"}
                 disabled={isSelf}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+                className={cn(selectClassName, "w-full disabled:opacity-50")}
               >
                 <option value="USER">Usuario</option>
                 <option value="ADMIN">Administrador</option>
               </select>
               {isSelf ? (
-                <p className="text-xs text-muted-foreground">
-                  No puedes cambiar tu propio rol.
-                </p>
-              ) : null}
+                <p className="text-xs text-muted-foreground">No puedes cambiar tu propio rol.</p>
+              ) : (
+                <FieldError message={errors.role} />
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <FormAlert message={formError} />
 
       <div className="flex items-center justify-end gap-2">
-        <Link
-          href="/dashboard/users"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
+        <Link href="/dashboard/users" className={cn(buttonVariants({ variant: "outline" }))}>
           Cancelar
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando..." : submitLabel}
+          {pending ? "Guardando..." : mode === "create" ? "Crear usuario" : "Guardar cambios"}
         </Button>
       </div>
     </form>

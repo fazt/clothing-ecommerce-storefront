@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,56 +13,59 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FieldError, FormAlert } from "@/components/form-message";
+import { selectClassName } from "@/components/dashboard/data-table";
+import { useApiForm } from "@/hooks/use-api-form";
+import { api } from "@/lib/api-client";
+import type { ApiDiscount } from "@/lib/api-types";
+import { formValues } from "@/lib/form-values";
+import { discountSchema } from "@/lib/schemas/discount";
 import { cn } from "@/lib/utils";
-import type { ApiDiscount } from "@/lib/api";
 
-export function DiscountForm({
-  initial,
-  action,
-  submitLabel,
-}: {
-  initial?: ApiDiscount;
-  action: (formData: FormData) => Promise<void>;
-  submitLabel: string;
-}) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+// Same form for create and edit; `initial` switches it to edit mode.
+export function DiscountForm({ initial }: { initial?: ApiDiscount }) {
+  const router = useRouter();
+  const mode = initial ? "edit" : "create";
+  const { pending, errors, formError, run } = useApiForm(
+    discountSchema,
+    (v) => (initial ? api.discounts.update(initial.id, v) : api.discounts.create(v)),
+    () => {
+      router.push("/dashboard/discounts");
+      router.refresh();
+    },
+  );
 
-  function onSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await action(formData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error al guardar");
-      }
-    });
-  }
-
-  const expiresDefault = initial?.expiresAt
-    ? initial.expiresAt.slice(0, 10)
-    : "";
+  // expiresAt is a calendar date stored at UTC midnight.
+  const expiresDefault = initial?.expiresAt ? initial.expiresAt.slice(0, 10) : "";
 
   return (
-    <form action={onSubmit} className="space-y-6">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run(formValues(e.currentTarget));
+      }}
+      className="space-y-6"
+    >
       <Card>
         <CardHeader>
           <CardTitle>Descuento</CardTitle>
-          <CardDescription>
-            Configura código, tipo y alcance del descuento.
-          </CardDescription>
+          <CardDescription>Configura código, tipo y alcance del descuento.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-2 md:gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="code">Código *</Label>
               <Input
                 id="code"
                 name="code"
-                required
                 defaultValue={initial?.code ?? ""}
                 placeholder="SUMMER25"
+                autoCapitalize="characters"
+                className="uppercase"
+                aria-invalid={errors.code ? true : undefined}
               />
+              <FieldError message={errors.code} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="type">Tipo *</Label>
@@ -70,12 +73,13 @@ export function DiscountForm({
                 id="type"
                 name="type"
                 defaultValue={initial?.type ?? "PERCENT"}
-                className="h-8 rounded-md border bg-background px-3 text-sm"
+                className={cn(selectClassName, "w-full")}
               >
                 <option value="PERCENT">Porcentaje</option>
                 <option value="FIXED">Monto fijo</option>
                 <option value="SHIPPING">Envío</option>
               </select>
+              <FieldError message={errors.type} />
             </div>
           </div>
 
@@ -87,10 +91,12 @@ export function DiscountForm({
               rows={2}
               defaultValue={initial?.description ?? ""}
               placeholder="Para qué sirve este descuento..."
+              aria-invalid={errors.description ? true : undefined}
             />
+            <FieldError message={errors.description} />
           </div>
 
-          <div className="grid gap-2 md:grid-cols-3 md:gap-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="value">Valor *</Label>
               <Input
@@ -99,9 +105,10 @@ export function DiscountForm({
                 type="number"
                 step="0.01"
                 min="0"
-                required
                 defaultValue={initial?.value ?? ""}
+                aria-invalid={errors.value ? true : undefined}
               />
+              <FieldError message={errors.value} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="limit">Límite de usos</Label>
@@ -109,10 +116,13 @@ export function DiscountForm({
                 id="limit"
                 name="limit"
                 type="number"
-                min="0"
+                step="1"
+                min="1"
                 defaultValue={initial?.limit ?? ""}
                 placeholder="Sin límite"
+                aria-invalid={errors.limit ? true : undefined}
               />
+              <FieldError message={errors.limit} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="status">Estado</Label>
@@ -120,12 +130,13 @@ export function DiscountForm({
                 id="status"
                 name="status"
                 defaultValue={initial?.status ?? "ACTIVE"}
-                className="h-8 rounded-md border bg-background px-3 text-sm"
+                className={cn(selectClassName, "w-full")}
               >
                 <option value="ACTIVE">Activo</option>
                 <option value="SCHEDULED">Programado</option>
                 <option value="EXPIRED">Expirado</option>
               </select>
+              <FieldError message={errors.status} />
             </div>
           </div>
 
@@ -136,26 +147,21 @@ export function DiscountForm({
               name="expiresAt"
               type="date"
               defaultValue={expiresDefault}
+              aria-invalid={errors.expiresAt ? true : undefined}
             />
+            <FieldError message={errors.expiresAt} />
           </div>
         </CardContent>
       </Card>
 
-      {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <FormAlert message={formError} />
 
       <div className="flex items-center justify-end gap-2">
-        <Link
-          href="/dashboard/discounts"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
+        <Link href="/dashboard/discounts" className={cn(buttonVariants({ variant: "outline" }))}>
           Cancelar
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando..." : submitLabel}
+          {pending ? "Guardando..." : mode === "create" ? "Crear descuento" : "Guardar cambios"}
         </Button>
       </div>
     </form>

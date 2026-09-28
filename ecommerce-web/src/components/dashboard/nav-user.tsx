@@ -1,6 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
 import Link from "next/link";
 import {
   BadgeCheck,
@@ -10,8 +9,8 @@ import {
   Store,
 } from "lucide-react";
 
-import { logoutAction } from "@/app/(auth)/actions";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useLogout } from "@/hooks/use-logout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +39,7 @@ function initials(user: ApiUser): string {
 
 export function NavUser({ user }: { user: ApiUser }) {
   const { isMobile } = useSidebar();
-  const [, startTransition] = useTransition();
+  const { logout } = useLogout();
   const displayName = user.name?.trim() || user.email;
   const roleLabel = user.role === "ADMIN" ? "Administrador" : "Cliente";
 
@@ -57,6 +56,7 @@ export function NavUser({ user }: { user: ApiUser }) {
             }
           >
             <Avatar className="h-8 w-8 rounded-lg">
+              {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
               <AvatarFallback className="rounded-lg bg-foreground text-background">
                 {initials(user)}
               </AvatarFallback>
@@ -76,6 +76,7 @@ export function NavUser({ user }: { user: ApiUser }) {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
+                  {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
                   <AvatarFallback className="rounded-lg bg-foreground text-background">
                     {initials(user)}
                   </AvatarFallback>
@@ -105,7 +106,7 @@ export function NavUser({ user }: { user: ApiUser }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => startTransition(() => logoutAction())}
+              onClick={logout}
             >
               <LogOut />
               Cerrar sesión

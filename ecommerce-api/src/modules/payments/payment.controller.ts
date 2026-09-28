@@ -1,49 +1,18 @@
 import { Request, Response } from "express";
 import { paymentService } from "./payment.service";
 import { PaypalApiError, PaypalNotConfiguredError } from "./paypal.client";
+import type { CreatePaypalOrderInput } from "./payment.schema";
 
 export const paymentController = {
   createPaypal: async (req: Request, res: Response) => {
     try {
       if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-      const { items } = req.body ?? {};
-      if (!Array.isArray(items)) {
-        return res.status(400).json({ error: "items must be an array" });
-      }
-      const normalized = items
-        .map(
-          (i: {
-            productId?: unknown;
-            quantity?: unknown;
-            variantId?: unknown;
-            sizeLabel?: unknown;
-            colorLabel?: unknown;
-          }) => ({
-            productId: String(i?.productId ?? ""),
-            quantity: Number(i?.quantity ?? 0),
-            variantId:
-              typeof i?.variantId === "string" && i.variantId
-                ? i.variantId
-                : null,
-            sizeLabel:
-              typeof i?.sizeLabel === "string" && i.sizeLabel
-                ? i.sizeLabel
-                : null,
-            colorLabel:
-              typeof i?.colorLabel === "string" && i.colorLabel
-                ? i.colorLabel
-                : null,
-          }),
-        )
-        .filter((i) => i.productId && i.quantity > 0);
-      if (normalized.length === 0) {
-        return res.status(400).json({ error: "Cart is empty" });
-      }
+      const { items } = req.body as CreatePaypalOrderInput;
       const result = await paymentService.createCheckout({
         userId: req.user.id,
         userEmail: req.user.email,
         userName: null,
-        items: normalized,
+        items,
       });
       return res.status(201).json(result);
     } catch (error) {
@@ -74,10 +43,7 @@ export const paymentController = {
   capturePaypal: async (req: Request, res: Response) => {
     try {
       if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-      const { paypalOrderId } = req.body ?? {};
-      if (typeof paypalOrderId !== "string" || !paypalOrderId) {
-        return res.status(400).json({ error: "paypalOrderId is required" });
-      }
+      const paypalOrderId = String(req.params.paypalOrderId);
       const order = await paymentService.capture(paypalOrderId, req.user.id);
       return res.json(order);
     } catch (error) {

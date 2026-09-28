@@ -5,7 +5,9 @@ import { ClipboardPaste, ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { uploadImageAction } from "@/app/dashboard/(admin)/products/upload-actions";
+import { api } from "@/lib/api-client";
+import { uploadErrorMessage } from "@/lib/upload-error";
+import type { UploadFolder } from "@/lib/api-types";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ACCEPTED = "image/jpeg,image/png,image/webp,image/avif,image/gif";
@@ -14,10 +16,13 @@ export function ImageUpload({
   name,
   defaultValue = "",
   folder = "products",
+  onChange,
 }: {
   name: string;
   defaultValue?: string;
-  folder?: string;
+  folder?: UploadFolder;
+  /** Called with the uploaded (or cleared) URL. */
+  onChange?: (url: string) => void;
 }) {
   const [url, setUrl] = useState<string>(defaultValue);
   const [uploading, setUploading] = useState(false);
@@ -41,23 +46,17 @@ export function ImageUpload({
       }
       setUploading(true);
       try {
-        const form = new FormData();
-        form.append("file", file, file.name || `pasted-${Date.now()}.png`);
-        form.append("folder", folder);
-        const result = await uploadImageAction(form);
-        if (!result.ok) {
-          setError(result.error);
-          return;
-        }
+        const result = await api.uploads.create(file, folder);
         setUrl(result.publicUrl);
+        onChange?.(result.publicUrl);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Error al subir la imagen.");
+        setError(uploadErrorMessage(e));
       } finally {
         setUploading(false);
         if (inputRef.current) inputRef.current.value = "";
       }
     },
-    [folder],
+    [folder, onChange],
   );
 
   // Paste from clipboard (document-wide, only reacts to image items)
@@ -85,6 +84,7 @@ export function ImageUpload({
   function clear() {
     setUrl("");
     setError(null);
+    onChange?.("");
   }
 
   function onDragEnter(ev: React.DragEvent) {
@@ -242,7 +242,10 @@ export function ImageUpload({
       <Input
         type="url"
         value={url}
-        onChange={(e) => setUrl(e.currentTarget.value)}
+        onChange={(e) => {
+          setUrl(e.currentTarget.value);
+          onChange?.(e.currentTarget.value);
+        }}
         placeholder="O pega una URL directamente"
       />
 

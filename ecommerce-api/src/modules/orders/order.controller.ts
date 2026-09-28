@@ -1,30 +1,11 @@
 import { Request, Response } from "express";
-import { OrderStatus } from "@prisma/client";
 import { orderService } from "./order.service";
-
-const VALID_STATUSES: OrderStatus[] = [
-  "PENDING",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-];
+import type { CreateOrderInput, ListOrdersQuery, UpdateOrderInput } from "./order.schema";
 
 export const orderController = {
-  list: async (_req: Request, res: Response) => {
+  list: async (req: Request, res: Response) => {
     try {
-      const orders = await orderService.findAll();
-      res.json(orders);
-    } catch {
-      res.status(500).json({ error: "Failed to fetch orders" });
-    }
-  },
-
-  listMine: async (req: Request, res: Response) => {
-    try {
-      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-      const orders = await orderService.findMine(req.user.id);
-      res.json(orders);
+      res.json(await orderService.findAll(req.query as unknown as ListOrdersQuery));
     } catch {
       res.status(500).json({ error: "Failed to fetch orders" });
     }
@@ -42,30 +23,16 @@ export const orderController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { customerId, paymentMethod, status, items } = req.body;
-      if (!customerId || !paymentMethod || !Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({
-          error: "customerId, paymentMethod and non-empty items[] are required",
-        });
-      }
-      const order = await orderService.create({
-        customerId,
-        paymentMethod,
-        status,
-        items,
-      });
+      const order = await orderService.create(req.body as CreateOrderInput);
       res.status(201).json(order);
     } catch {
       res.status(500).json({ error: "Failed to create order" });
     }
   },
 
-  updateStatus: async (req: Request, res: Response) => {
+  update: async (req: Request, res: Response) => {
     try {
-      const status = req.body.status as OrderStatus;
-      if (!VALID_STATUSES.includes(status)) {
-        return res.status(400).json({ error: "Invalid status" });
-      }
+      const { status } = req.body as UpdateOrderInput;
       const order = await orderService.updateStatus(String(req.params.id), status);
       res.json(order);
     } catch (error: any) {

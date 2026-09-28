@@ -2,6 +2,7 @@ import crypto from "crypto";
 import path from "path";
 import { Request, Response } from "express";
 import { putObject, StorageNotConfiguredError } from "./spaces.client";
+import type { UploadInput } from "./storage.schema";
 
 const ALLOWED_CONTENT_TYPES = new Set([
   "image/jpeg",
@@ -42,15 +43,11 @@ function mimeToExt(mime: string): string {
 }
 
 function buildKey(folder: string, filename: string, contentType: string): string {
-  const safeFolder =
-    typeof folder === "string" && /^[a-z0-9/_-]+$/.test(folder)
-      ? folder
-      : "products";
   const safe = sanitizeFilename(filename);
   const ext = path.extname(safe) || mimeToExt(contentType);
   const stem = path.basename(safe, path.extname(safe)) || "image";
   const random = crypto.randomBytes(6).toString("hex");
-  return `${safeFolder}/${Date.now()}-${random}-${stem}${ext}`;
+  return `${folder}/${Date.now()}-${random}-${stem}${ext}`;
 }
 
 export const storageController = {
@@ -69,8 +66,11 @@ export const storageController = {
           allowed: [...ALLOWED_CONTENT_TYPES],
         });
       }
-      const folder =
-        typeof req.body?.folder === "string" ? req.body.folder : "products";
+      const { folder } = req.body as UploadInput;
+      // Customers may only upload their own avatar; catalog folders are admin-only.
+      if (folder !== "avatars" && req.user?.role !== "ADMIN") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
       const key = buildKey(folder, originalname, mimetype);
       const result = await putObject({
         key,

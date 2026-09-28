@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
-import { DiscountType, DiscountStatus } from "@prisma/client";
 import { discountService } from "./discount.service";
-
-const VALID_TYPES: DiscountType[] = ["PERCENT", "FIXED", "SHIPPING"];
-const VALID_STATUSES: DiscountStatus[] = ["ACTIVE", "SCHEDULED", "EXPIRED"];
+import type {
+  CreateDiscountInput,
+  ListDiscountsQuery,
+  UpdateDiscountInput,
+} from "./discount.schema";
 
 export const discountController = {
-  list: async (_req: Request, res: Response) => {
+  list: async (req: Request, res: Response) => {
     try {
-      res.json(await discountService.findAll());
+      res.json(await discountService.findAll(req.query as unknown as ListDiscountsQuery));
     } catch {
       res.status(500).json({ error: "Failed to fetch discounts" });
     }
@@ -26,32 +27,11 @@ export const discountController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { code, description, type, value, limit, status, expiresAt } =
-        req.body;
-
-      if (!code || !type || value === undefined) {
-        return res.status(400).json({ error: "code, type and value are required" });
-      }
-      if (!VALID_TYPES.includes(type)) {
-        return res.status(400).json({ error: "Invalid type" });
-      }
-      if (status && !VALID_STATUSES.includes(status)) {
-        return res.status(400).json({ error: "Invalid status" });
-      }
-
-      const discount = await discountService.create({
-        code,
-        description,
-        type,
-        value,
-        limit: limit ?? null,
-        status,
-        expiresAt: expiresAt ?? null,
-      });
+      const discount = await discountService.create(req.body as CreateDiscountInput);
       res.status(201).json(discount);
     } catch (error: any) {
       if (error.code === "P2002") {
-        return res.status(409).json({ error: "Code already exists" });
+        return res.status(409).json({ error: "Ya existe un descuento con ese código" });
       }
       res.status(500).json({ error: "Failed to create discount" });
     }
@@ -59,14 +39,14 @@ export const discountController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const d = await discountService.update(String(req.params.id), req.body);
+      const d = await discountService.update(String(req.params.id), req.body as UpdateDiscountInput);
       res.json(d);
     } catch (error: any) {
       if (error.code === "P2025") {
         return res.status(404).json({ error: "Discount not found" });
       }
       if (error.code === "P2002") {
-        return res.status(409).json({ error: "Code already exists" });
+        return res.status(409).json({ error: "Ya existe un descuento con ese código" });
       }
       res.status(500).json({ error: "Failed to update discount" });
     }

@@ -25,34 +25,39 @@ Documento vivo del diseño del proyecto. Para la vista de producto (qué hace la
           Browser
 ```
 
+## Flujo de datos web ↔ API
+
+La web **no usa Server Actions**. Hay dos caminos hacia la API:
+
+| Quién llama | Módulo | URL base | Auth |
+|---|---|---|---|
+| Browser (Client Components) — todas las mutaciones y las tablas del dashboard | `src/lib/api-client.ts` (`api.*`) | `NEXT_PUBLIC_API_URL` | cookie `auth-token` (`credentials: "include"`) |
+| Server Components — solo lecturas (detalle para editar, reportes, catálogo) | `src/lib/api.ts` (`productsApi.listAll`, …) | `API_URL` | cookie reenviada como `Authorization: Bearer` |
+
+Los tipos compartidos viven en `src/lib/api-types.ts` (importable desde cliente y servidor).
+
 ## Flujo de autenticación
 
 ```
-Browser                 Web (Next server)              API (Express)
-   │   POST /login         │                              │
-   │ ─────────────────────▶│                              │
-   │                       │  POST /api/auth/login        │
-   │                       │ ────────────────────────────▶│
-   │                       │                              │ verify bcrypt
-   │                       │                              │ sign JWT
-   │                       │  { token, user }             │
-   │                       │ ◀────────────────────────────│
-   │  Set-Cookie: auth-token (HttpOnly, sameSite=lax)     │
-   │ ◀─────────────────────│                              │
-   │                                                      │
-   │   GET /dashboard   (cookie auth-token forwarded)     │
-   │ ─────────────────────▶│                              │
-   │                       │  GET /api/auth/me            │
-   │                       │  Authorization: Bearer ...   │
-   │                       │ ────────────────────────────▶│
-   │                       │  { user }                    │
-   │                       │ ◀────────────────────────────│
-   │   HTML renderizado   │                               │
-   │ ◀─────────────────────│                              │
+Browser                                   API (Express)              Web (Next server)
+   │  POST /api/auth/login  (fetch, credentials)│                           │
+   │ ─────────────────────────────────────────▶│ verify bcrypt, sign JWT   │
+   │  Set-Cookie: auth-token (HttpOnly, lax)   │                           │
+   │ ◀─────────────────────────────────────────│                           │
+   │                                                                       │
+   │  GET /dashboard  (cookie auth-token)                                  │
+   │ ─────────────────────────────────────────────────────────────────────▶│
+   │                                           │  GET /api/me              │
+   │                                           │  Authorization: Bearer …  │
+   │                                           │ ◀─────────────────────────│
+   │  HTML renderizado                                                     │
+   │ ◀─────────────────────────────────────────────────────────────────────│
 ```
 
-- Cookie `auth-token` se pone en el response de un **server action** (`(auth)/actions.ts`).
-- El server action llama al backend con el token y guarda lo recibido.
+- La cookie la emite y la borra **la API** (`POST /auth/login`, `/auth/register`, `/auth/logout`). La web solo la lee.
+- Web y API deben compartir *site* para que la cookie viaje a ambos: en local `localhost:3000` / `localhost:4000`; en producción `ecommerce-clothes.lat` / `api.ecommerce-clothes.lat` con `COOKIE_DOMAIN=ecommerce-clothes.lat`.
+- CORS de la API solo acepta los orígenes de `CORS_ORIGINS` y con `credentials: true`.
+- `requireAuth` acepta el token desde `Authorization: Bearer` o desde la cookie.
 - El `proxy.ts` de Next.js gatea `/dashboard/**` por presencia de cookie.
 - El guard de rol se ejecuta en **layouts server**: `(admin)/layout.tsx` invoca `requireAdminPage()`.
 
@@ -62,7 +67,7 @@ Browser                 Web (Next server)              API (Express)
 USER                Web                 API                 PayPal           Postgres
   │  Pagar con PP    │                    │                    │                 │
   │ ────────────────▶│                    │                    │                 │
-  │                  │ POST /payments/paypal/create            │                 │
+  │                  │ POST /payments/paypal/orders            │                 │
   │                  │ ─────────────────▶│                    │                 │
   │                  │                    │ upsert Customer   │                 │
   │                  │                    │ ───────────────────────────────────▶│
@@ -80,7 +85,7 @@ USER                Web                 API                 PayPal           Pos
   │ ──── PayPal Sandbox (user aprueba) ────────────────▶      │                 │
   │ 302 /checkout/return?token=xxx                             │                 │
   │ ──────────────────▶│                  │                    │                 │
-  │                  │  capturePaypal    │                    │                 │
+  │                  │ POST …/orders/:id/capture (browser)    │                 │
   │                  │ ─────────────────▶│                    │                 │
   │                  │                    │ POST /capture     │                 │
   │                  │                    │ ────────────────▶│                 │
@@ -92,10 +97,12 @@ USER                Web                 API                 PayPal           Pos
   │ ◀─────────────────│                    │                    │                 │
 ```
 
+Ambas llamadas salen del navegador (`checkout-view.tsx` y `checkout/return/capture-view.tsx`). La captura es idempotente: si la orden ya no está `PENDING`, la API la devuelve sin volver a cobrar.
+
 Endpoints relevantes:
-- `POST /api/payments/paypal/create` (requiere auth)
-- `POST /api/payments/paypal/capture` (requiere auth)
-- `GET /api/orders/mine` (cualquier rol autenticado)
+- `POST /api/payments/paypal/orders` (requiere auth)
+- `POST /api/payments/paypal/orders/:paypalOrderId/capture` (requiere auth)
+- `GET /api/me/orders` (cualquier rol autenticado)
 - `GET /api/orders` (admin)
 
 ## Flujo de uploads
@@ -103,57 +110,73 @@ Endpoints relevantes:
 Los archivos se suben **a través del backend** (no con presigned URLs) para evitar CORS del bucket:
 
 ```
-Browser                Web server               API server             DO Spaces
-  │  <ImageUpload/>      │                        │                        │
-  │  FormData(file)      │                        │                        │
-  │ ────────────────────▶│  server action         │                        │
-  │                      │  POST /storage/upload  │                        │
-  │                      │  (multipart + Bearer)  │                        │
-  │                      │ ──────────────────────▶│                        │
-  │                      │                        │ multer parses file     │
-  │                      │                        │ PutObjectCommand       │
-  │                      │                        │ (ACL public-read)      │
-  │                      │                        │ ──────────────────────▶│
-  │                      │                        │ 200                    │
-  │                      │                        │ ◀──────────────────────│
-  │                      │  { publicUrl }         │                        │
-  │                      │ ◀──────────────────────│                        │
-  │  setUrl(publicUrl)  │                        │                        │
-  │ ◀─────────────────── │                        │                        │
+Browser                                  API server             DO Spaces
+  │  <ImageUpload/> / avatar             │                        │
+  │  POST /api/uploads                   │                        │
+  │  FormData(file, folder)  + cookie    │                        │
+  │ ────────────────────────────────────▶│ multer + Zod(folder)   │
+  │                                      │ PutObjectCommand       │
+  │                                      │ (ACL public-read)      │
+  │                                      │ ──────────────────────▶│
+  │                                      │ 200                    │
+  │                                      │ ◀──────────────────────│
+  │  201 { key, publicUrl }              │                        │
+  │ ◀────────────────────────────────────│                        │
 ```
 
-Solo admin puede invocar `/storage/upload`. El contenido se valida por `Content-Type` (solo `image/*`) y tamaño (5 MB).
+`POST /uploads` requiere sesión. `folder` es `products`, `categories` o `avatars`; un USER solo puede subir a `avatars`. El contenido se valida por `Content-Type` (solo `image/*`) y tamaño (5 MB → 413).
 
 ## Módulos del backend
 
-`ecommerce-api/src/modules/` — cada módulo sigue `controller / service / routes / index`:
+`ecommerce-api/src/modules/` — cada módulo sigue `schema / controller / service / routes / index`. `*.schema.ts` define con Zod el body, la query y los params de cada ruta.
 
 | Módulo | Endpoints | Notas |
 |---|---|---|
-| `auth` | `/register`, `/login`, `/me`, `/forgot-password`, `/reset-password` | JWT + bcrypt; forgot-password nunca revela existencia del email |
-| `users` | CRUD admin-only de usuarios | Auto-guard: admin no puede eliminarse ni demotarse |
-| `products` | `/`, `/:id` CRUD | GET público; CUD admin. Admite variantes + galería |
-| `categories` | `/`, `/:id`, `/slug/:slug` | GET público; CUD admin |
-| `customers` | CRUD admin-only | Segment derivado (new/returning/vip) |
-| `orders` | `/`, `/:id`, `/mine`, `/:id/status` | `/mine` cualquier rol; resto admin |
-| `discounts` | CRUD admin-only | Porcentaje / fijo / envío |
-| `analytics` | `/summary` | Métricas + topProducts + sales series |
-| `payments` | `/paypal/create`, `/paypal/capture` | Singleton PayPal client con token cache |
+| `auth` | `POST /register`, `/login`, `/logout`, `/forgot-password`, `/reset-password` | Emite/borra la cookie; forgot-password nunca revela si el email existe |
+| `me` | `GET /me`, `PATCH /me`, `PUT /me/password`, `GET /me/orders` | Perfil del usuario en sesión; cambiar el email exige `currentPassword` |
+| `users` | CRUD admin-only · filtro `role` | Auto-guard: admin no puede eliminarse ni cambiar su rol |
+| `products` | CRUD · filtros `categoryId`, `stock=in\|low\|out` | GET público; escritura admin. Variantes + galería |
+| `categories` | CRUD · filtro `isVisible` | GET público; escritura admin |
+| `customers` | CRUD admin-only · filtro `segment` | Segmento derivado (new/returning/vip) |
+| `orders` | `GET /`, `GET /:id`, `POST /`, `PATCH /:id` (`{ status }`), `DELETE /:id` · filtro `status` | Admin-only |
+| `discounts` | CRUD admin-only · filtros `type`, `status` | Porcentaje (≤ 100) / fijo / envío |
+| `analytics` | `GET /summary` | Métricas + topProducts + sales series |
+| `payments` | `POST /paypal/orders`, `POST /paypal/orders/:id/capture` | Singleton PayPal client con token cache |
 | `email` | — (service interno) | Resend; fail-safe siempre |
-| `storage` | `/upload` | multipart → multer → S3 SDK → Spaces |
+| `storage` | `POST /uploads` | multipart → multer → S3 SDK → Spaces |
+
+## Convenciones de la API
+
+- **REST**: recursos en plural, `PATCH` para actualizaciones parciales, `204` sin cuerpo en `DELETE`.
+- **Listados** (`GET /<recurso>`): aceptan `page`, `pageSize` (1–100, default 10), `search` y los filtros del recurso, y responden:
+  ```json
+  { "data": [...], "meta": { "page": 1, "pageSize": 10, "total": 42, "totalPages": 5 } }
+  ```
+- **Validación**: middleware `validate({ params, query, body })` con Zod (`src/lib/validate.ts`). Un error responde `400`:
+  ```json
+  { "error": "Datos inválidos", "code": "VALIDATION_ERROR", "details": [{ "path": "email", "message": "Email inválido" }] }
+  ```
+  El cliente web (`ApiError.fieldErrors`) pinta esos mensajes junto a cada campo.
 
 ## Guards y permisos
 
 ```
-requireAuth      → Bearer token válido → req.user = { id, email, role }
+requireAuth      → token válido (Bearer o cookie auth-token) → req.user = { id, email, role }
 requireAdmin     → requireAuth + role === 'ADMIN'
 ```
 
-Aplicados por ruta (no a nivel de router) para permitir casos como `GET /api/orders/mine` (auth pero cualquier rol) junto a `GET /api/orders` (admin).
+Se aplican al montar cada router en `src/routes.ts` (`/me`, `/customers`, `/orders`, `/discounts`, `/analytics`, `/users`) o por ruta cuando la lectura es pública (`/products`, `/categories`).
 
 En el frontend:
 - `src/proxy.ts` chequea cookie `auth-token` para `/dashboard/**` (Edge middleware de Next 16).
 - `requireAdminPage()` de `src/lib/session.ts` redirige `/dashboard/my-orders` si el usuario no es admin (llamada en `(admin)/layout.tsx`).
+
+## Dashboard
+
+- **Tablas CRUD**: `components/dashboard/data-table.tsx` pagina, busca y filtra por columna contra la API. Las columnas de email usan `CopyEmail` (icono para copiar al portapapeles).
+- **Formularios**: un único componente por recurso para crear y editar (`<recurso>-form.tsx`), validado con Zod (`src/lib/schemas/`) vía `useApiForm`.
+- **Command palette**: `⌘K` / `Ctrl+K` (`components/dashboard/command-palette.tsx`) navega a todas las páginas del rol, crea recursos, cambia el tema y cierra sesión. Comparte la navegación con el sidebar (`nav-config.ts`).
+- **Perfil** (`/dashboard/profile`): datos personales, cambio de contraseña y avatar.
 
 ## Estructura del storefront
 
@@ -196,3 +219,12 @@ app/
 | Producción | `https://ecommerce-clothes.lat` | `https://api.ecommerce-clothes.lat` |
 | Railway (fallback) | `https://web-production-49ad9.up.railway.app` | `https://api-production-089d.up.railway.app` |
 | Local | `http://localhost:3000` | `http://localhost:4000` |
+
+Variables que dependen del entorno (Railway):
+
+| Servicio | Variable | Producción |
+|---|---|---|
+| `api` | `CORS_ORIGINS` | `https://ecommerce-clothes.lat` |
+| `api` | `COOKIE_DOMAIN` | `ecommerce-clothes.lat` |
+| `web` | `NEXT_PUBLIC_API_URL` | `https://api.ecommerce-clothes.lat/api` (se incrusta en **build**) |
+| `web` | `API_URL` | URL interna o pública de la API |

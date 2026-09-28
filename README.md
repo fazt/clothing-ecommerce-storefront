@@ -18,7 +18,7 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
         │                      ├──▶ Resend (emails)
         │                      └──▶ DigitalOcean Spaces (imágenes)
         │
-        └─▶ LocalStorage (carrito, session cookie auth)
+        └─▶ LocalStorage (carrito) · cookie HttpOnly emitida por la API
 ```
 
 Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
@@ -32,9 +32,13 @@ Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
 ## Funcionalidades
 
 - **Storefront** (`/`, `/products`, `/products/[slug]`, `/checkout`): catálogo con categorías, galería de imágenes por producto, variantes (talla + color), carrito con localStorage.
-- **Auth** (`/login`, `/register`, `/forgot-password`, `/reset-password`): JWT + bcrypt, cookies HttpOnly, flujo completo de reset con email.
+- **Auth** (`/login`, `/register`, `/forgot-password`, `/reset-password`): JWT + bcrypt, cookie HttpOnly emitida por la API, flujo completo de reset con email.
+- **Sin Server Actions**: el navegador llama directo a la API REST (`src/lib/api-client.ts`); los Server Components solo leen (`src/lib/api.ts`).
+- **Validación con Zod** en la API (body, query y params) y en todos los formularios de la web.
 - **Checkout PayPal**: flujo redirect clásico, orden persistida en DB, email de confirmación al completar.
-- **Dashboard admin** (`/dashboard`): Reports con KPIs, gráficos, stock bajo, top productos y leaderboards. CRUD de productos, categorías, órdenes, clientes, descuentos, usuarios.
+- **Dashboard admin** (`/dashboard`): Reports con KPIs, gráficos, stock bajo, top productos y leaderboards. CRUD de productos, categorías, órdenes, clientes, descuentos y usuarios con búsqueda, filtros por columna, paginación en servidor y copiar email al portapapeles.
+- **Command palette** (`⌘K` / `Ctrl+K`): navega entre todas las páginas, crea recursos, cambia el tema y cierra sesión.
+- **Perfil** (`/dashboard/profile`): editar datos, cambiar contraseña y avatar.
 - **Dashboard USER** (`/dashboard/my-orders`): historial de compras del cliente logueado.
 - **Upload de imágenes**: drag & drop + paste clipboard → backend proxy → DigitalOcean Spaces.
 - **Emails transaccionales**: bienvenida al registrar, reset password, confirmación de compra (vía Resend).
@@ -47,11 +51,12 @@ ecommerce-clothes/
 │   ├── src/
 │   │   ├── index.ts         # entry point
 │   │   ├── routes.ts        # router raíz
-│   │   ├── lib/prisma.ts    # cliente singleton
+│   │   ├── lib/             # prisma, validate (Zod), pagination, auth-cookie
 │   │   ├── middleware/      # requireAuth, requireAdmin
-│   │   ├── modules/         # auth, users, products, categories,
+│   │   ├── modules/         # auth, me, users, products, categories,
 │   │   │                    # customers, orders, discounts,
 │   │   │                    # analytics, payments, email, storage
+│   │   │                    # (cada uno con *.schema.ts de Zod)
 │   │   └── types/express.d.ts
 │   ├── prisma/
 │   │   ├── schema.prisma    # modelos (ver docs/database.md)
@@ -71,9 +76,12 @@ ecommerce-clothes/
 │   │   │   ├── dashboard/   # sidebar, nav, header del admin
 │   │   │   └── ui/          # shadcn primitives
 │   │   └── lib/
-│   │       ├── api.ts       # cliente REST tipado
+│   │       ├── api-client.ts # cliente REST del navegador (mutaciones, tablas)
+│   │       ├── api.ts       # lecturas desde Server Components
+│   │       ├── api-types.ts # tipos compartidos
+│   │       ├── schemas/     # esquemas Zod de formularios
 │   │       ├── products.ts  # fetch + mapping al dominio
-│   │       └── session.ts   # cookies auth + getSessionUser
+│   │       └── session.ts   # lee la cookie + getSessionUser
 │   ├── proxy.ts             # middleware Next 16 (auth gate)
 │   └── nixpacks.toml
 │
@@ -136,7 +144,7 @@ npm run dev                    # http://localhost:4000
 
 ```bash
 cd ecommerce-web
-cp .env.example .env.local     # API_URL=http://localhost:4000/api
+cp .env.example .env.local     # API_URL y NEXT_PUBLIC_API_URL
 npm install
 npm run dev                    # http://localhost:3000
 ```
@@ -158,6 +166,8 @@ Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
 | `DATABASE_URL` | Conexión Postgres |
 | `PORT` | Puerto HTTP (default 4000) |
 | `JWT_SECRET` · `JWT_EXPIRES_IN` | Auth |
+| `CORS_ORIGINS` | Orígenes de la web que pueden llamar a la API con credenciales (separados por coma) |
+| `COOKIE_DOMAIN` | Dominio padre compartido por web y API en producción (ej. `ecommerce-clothes.lat`); vacío en local |
 | `APP_NAME` | Nombre mostrado en emails |
 | `PAYPAL_CLIENT_ID` · `PAYPAL_CLIENT_SECRET` · `PAYPAL_API_BASE` | PayPal credentials |
 | `PAYPAL_RETURN_URL` · `PAYPAL_CANCEL_URL` | URLs de redirect post-approval |
@@ -168,7 +178,9 @@ Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
 **Web**
 | Variable | Propósito |
 |---|---|
-| `API_URL` | URL de la API (ej. `http://localhost:4000/api`) |
+| `API_URL` | URL de la API para lecturas desde el servidor (ej. `http://localhost:4000/api`) |
+| `NEXT_PUBLIC_API_URL` | URL de la API accesible desde el navegador; se incrusta en el build |
+| `ALLOWED_DEV_ORIGINS` | Solo dev: hosts extra (ej. Tailscale) que pueden usar el dev server; sin esto la app no hidrata en esos hosts |
 
 ## Scripts útiles
 
@@ -195,6 +207,8 @@ Cada push a `main` dispara auto-deploy en Railway:
 - Cambios en `ecommerce-web/**` → redeploy del servicio `web`
 
 El servicio `api` corre `prisma migrate deploy` automáticamente en cada start, así que las migraciones se aplican sin intervención manual.
+
+Como el navegador llama directo a la API, en Railway hacen falta: `CORS_ORIGINS=https://ecommerce-clothes.lat` y `COOKIE_DOMAIN=ecommerce-clothes.lat` en `api`, y `NEXT_PUBLIC_API_URL=https://api.ecommerce-clothes.lat/api` en `web` (disponible en build).
 
 Seed inicial (manual, una sola vez):
 ```bash

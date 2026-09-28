@@ -30,9 +30,9 @@ async function loadOverview(): Promise<
   try {
     const [summary, orders, products, customers] = await Promise.all([
       analyticsApi.summary(),
-      ordersApi.list(),
-      productsApi.list(),
-      customersApi.list(),
+      ordersApi.listAll(),
+      productsApi.listAll(),
+      customersApi.listAll(),
     ]);
     return { ok: true, summary, orders, products, customers };
   } catch (e) {

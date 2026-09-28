@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { productsApi, type ApiProduct, type ApiProductVariant } from "@/lib/api";
 
 export interface ProductVariant {
@@ -133,9 +134,11 @@ function mapApiProduct(p: ApiProduct): Product {
 
 export async function fetchProducts(): Promise<Product[]> {
   try {
-    const apiProducts = await productsApi.list();
+    const apiProducts = await productsApi.listAll();
     return apiProducts.map(mapApiProduct);
   } catch (e) {
+    // Let Next's own signals (dynamic rendering, redirects) through.
+    unstable_rethrow(e);
     console.error("[products] failed to fetch catalog", e);
     return [];
   }

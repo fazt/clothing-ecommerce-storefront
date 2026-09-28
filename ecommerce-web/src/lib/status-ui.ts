@@ -1,4 +1,4 @@
-import type { CustomerSegment, DiscountStatus, DiscountType, OrderStatus } from "@/lib/api";
+import type { CustomerSegment, DiscountStatus, DiscountType, OrderStatus } from "@/lib/api-types";
 
 export const orderStatusStyles: Record<
   OrderStatus,

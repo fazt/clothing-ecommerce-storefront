@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,42 +15,74 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FieldError, FormAlert } from "@/components/form-message";
 import { ImageUpload } from "@/components/image-upload";
-import { ProductVariantsField } from "./product-variants-field";
-import type { ApiCategory, ApiProduct } from "@/lib/api";
+import { selectClassName } from "@/components/dashboard/data-table";
+import { useApiForm } from "@/hooks/use-api-form";
+import { api } from "@/lib/api-client";
+import type { ApiCategory, ApiProduct } from "@/lib/api-types";
+import { formValues } from "@/lib/form-values";
+import { productSchema } from "@/lib/schemas/product";
+import { cn } from "@/lib/utils";
+import {
+  ProductVariantsField,
+  toVariantDrafts,
+  type VariantDraft,
+} from "./product-variants-field";
 
+const MAX_GALLERY_IMAGES = 20;
+
+type CategoryOption = Pick<ApiCategory, "id" | "name">;
+
+let nextGalleryKey = 0;
+
+// Same form for create and edit; `initial` switches it to edit mode.
 export function ProductForm({
   initial,
   categories,
-  action,
-  submitLabel,
 }: {
   initial?: ApiProduct;
-  categories: ApiCategory[];
-  action: (formData: FormData) => Promise<void>;
-  submitLabel: string;
+  categories: CategoryOption[];
 }) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [galleryKeys, setGalleryKeys] = useState<string[]>(
-    (initial?.images ?? []).map((_, i) => `g-${i}`),
+  const router = useRouter();
+  const mode = initial ? "edit" : "create";
+  const { pending, errors, formError, run } = useApiForm(
+    productSchema,
+    (v) => (initial ? api.products.update(initial.id, v) : api.products.create(v)),
+    () => {
+      router.push("/dashboard/products");
+      router.refresh();
+    },
   );
 
-  function onSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await action(formData);
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Error al guardar");
-      }
-    });
-  }
+  const [gallery, setGallery] = useState(() =>
+    (initial?.images ?? []).map((url, i) => ({ key: `g-${i}`, url })),
+  );
+  const [variants, setVariants] = useState<VariantDraft[]>(() =>
+    toVariantDrafts(initial?.variants),
+  );
 
-  const galleryInitial = initial?.images ?? [];
+  // Keep the current category selectable even if the list failed to load,
+  // otherwise saving would silently clear it.
+  const categoryOptions: CategoryOption[] =
+    initial?.category && !categories.some((c) => c.id === initial.category?.id)
+      ? [...categories, initial.category]
+      : categories;
 
   return (
-    <form action={onSubmit} className="space-y-6">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        // Every gallery slot renders a hidden `images` input, in display order.
+        const images = new FormData(form)
+          .getAll("images")
+          .filter((v): v is string => typeof v === "string");
+        void run({ ...formValues(form), images, variants });
+      }}
+      className="space-y-6"
+    >
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -65,10 +97,11 @@ export function ProductForm({
               <Input
                 id="name"
                 name="name"
-                required
                 defaultValue={initial?.name ?? ""}
                 placeholder="Ej: Camiseta oversized"
+                aria-invalid={errors.name ? true : undefined}
               />
+              <FieldError message={errors.name} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description">Descripción</Label>
@@ -78,7 +111,9 @@ export function ProductForm({
                 rows={4}
                 defaultValue={initial?.description ?? ""}
                 placeholder="Describe el producto, materiales, cuidado..."
+                aria-invalid={errors.description ? true : undefined}
               />
+              <FieldError message={errors.description} />
             </div>
             <div className="grid gap-2">
               <Label>Imagen principal</Label>
@@ -87,6 +122,7 @@ export function ProductForm({
                 defaultValue={initial?.imageUrl ?? ""}
                 folder="products"
               />
+              <FieldError message={errors.imageUrl} />
             </div>
           </CardContent>
         </Card>
@@ -108,12 +144,13 @@ export function ProductForm({
                   type="number"
                   step="0.01"
                   min="0"
-                  required
                   className="pl-7"
                   defaultValue={initial?.price ?? ""}
                   placeholder="0.00"
+                  aria-invalid={errors.price ? true : undefined}
                 />
               </div>
+              <FieldError message={errors.price} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="stock">Stock (si no hay variantes)</Label>
@@ -123,7 +160,9 @@ export function ProductForm({
                 type="number"
                 min="0"
                 defaultValue={initial?.stock ?? 0}
+                aria-invalid={errors.stock ? true : undefined}
               />
+              <FieldError message={errors.stock} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="categoryId">Categoría</Label>
@@ -131,15 +170,17 @@ export function ProductForm({
                 id="categoryId"
                 name="categoryId"
                 defaultValue={initial?.categoryId ?? ""}
-                className="h-8 rounded-md border bg-background px-3 text-sm"
+                className={cn(selectClassName, "w-full")}
+                aria-invalid={errors.categoryId ? true : undefined}
               >
                 <option value="">Sin categoría</option>
-                {categories.map((c) => (
+                {categoryOptions.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
               </select>
+              <FieldError message={errors.categoryId} />
             </div>
 
             <div className="space-y-2 border-t pt-4">
@@ -186,26 +227,23 @@ export function ProductForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {galleryKeys.length === 0 ? (
+          {gallery.length === 0 ? (
             <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
               Sin imágenes adicionales.
             </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {galleryKeys.map((k, i) => (
-                <div key={k} className="relative rounded-md border p-2">
-                  <ImageUpload
-                    name="images"
-                    defaultValue={galleryInitial[i] ?? ""}
-                    folder="products"
-                  />
+              {gallery.map((item, i) => (
+                <div key={item.key} className="relative space-y-2 rounded-md border p-2">
+                  <ImageUpload name="images" defaultValue={item.url} folder="products" />
+                  <FieldError message={errors[`images.${i}`]} />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-sm"
                     className="absolute right-2 top-2"
                     onClick={() =>
-                      setGalleryKeys((prev) => prev.filter((x) => x !== k))
+                      setGallery((prev) => prev.filter((x) => x.key !== item.key))
                     }
                     aria-label="Quitar imagen"
                   >
@@ -215,15 +253,14 @@ export function ProductForm({
               ))}
             </div>
           )}
+          <FieldError message={errors.images} />
           <Button
             type="button"
             variant="outline"
             size="sm"
+            disabled={gallery.length >= MAX_GALLERY_IMAGES}
             onClick={() =>
-              setGalleryKeys((prev) => [
-                ...prev,
-                `g-new-${Math.random().toString(36).slice(2, 8)}`,
-              ])
+              setGallery((prev) => [...prev, { key: `g-new-${nextGalleryKey++}`, url: "" }])
             }
           >
             <Plus className="mr-1 h-4 w-4" />
@@ -241,15 +278,11 @@ export function ProductForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProductVariantsField initial={initial?.variants} />
+          <ProductVariantsField rows={variants} onChange={setVariants} errors={errors} />
         </CardContent>
       </Card>
 
-      {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <FormAlert message={formError} />
 
       <div className="flex items-center justify-end gap-2">
         <Link
@@ -259,7 +292,7 @@ export function ProductForm({
           Cancelar
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando..." : submitLabel}
+          {pending ? "Guardando..." : mode === "create" ? "Crear producto" : "Guardar cambios"}
         </Button>
       </div>
     </form>

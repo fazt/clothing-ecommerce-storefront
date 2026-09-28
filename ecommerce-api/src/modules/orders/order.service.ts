@@ -1,21 +1,7 @@
 import { OrderStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-
-export interface OrderItemInput {
-  productId: string;
-  quantity: number;
-  unitPrice?: number | string;
-  variantId?: string | null;
-  sizeLabel?: string | null;
-  colorLabel?: string | null;
-}
-
-export interface OrderInput {
-  customerId: string;
-  status?: OrderStatus;
-  paymentMethod: string;
-  items: OrderItemInput[];
-}
+import { contains, pageArgs, paginated, type PaginationQuery } from "../../lib/pagination";
+import type { CreateOrderInput, ListOrdersQuery } from "./order.schema";
 
 const orderInclude = {
   customer: { select: { id: true, name: true, email: true } },
@@ -26,24 +12,42 @@ const orderInclude = {
   },
 } satisfies Prisma.OrderInclude;
 
-export const orderService = {
-  findAll: () =>
+async function findPage(where: Prisma.OrderWhereInput, query: PaginationQuery) {
+  const [orders, total] = await prisma.$transaction([
     prisma.order.findMany({
+      where,
       orderBy: { createdAt: "desc" },
       include: orderInclude,
+      ...pageArgs(query),
     }),
+    prisma.order.count({ where }),
+  ]);
+  return paginated(orders, total, query);
+}
 
-  findMine: (userId: string) =>
-    prisma.order.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      include: orderInclude,
-    }),
+export const orderService = {
+  findAll: async (query: ListOrdersQuery) => {
+    const where: Prisma.OrderWhereInput = {
+      ...(query.status && { status: query.status }),
+      ...(query.search && {
+        OR: [
+          { id: { startsWith: query.search.toLowerCase() } },
+          { customer: { name: contains(query.search) } },
+          { customer: { email: contains(query.search) } },
+          { paymentMethod: contains(query.search) },
+        ],
+      }),
+    };
+    return findPage(where, query);
+  },
+
+  findMine: (userId: string, query: PaginationQuery) =>
+    findPage({ userId }, query),
 
   findById: (id: string) =>
     prisma.order.findUnique({ where: { id }, include: orderInclude }),
 
-  create: async (data: OrderInput) => {
+  create: async (data: CreateOrderInput) => {
     // Fetch product prices if unitPrice not provided, compute total
     const productIds = data.items.map((i) => i.productId);
     const products = await prisma.product.findMany({

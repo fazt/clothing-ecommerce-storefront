@@ -1,29 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState } from "react";
 import { MailCheck } from "lucide-react";
-import {
-  forgotPasswordAction,
-  type ForgotPasswordState,
-} from "../actions";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className="auth-submit">
-      {pending ? "Enviando..." : "Enviar enlace"}
-    </button>
-  );
-}
+import { api } from "@/lib/api-client";
+import { formValues } from "@/lib/form-values";
+import { forgotPasswordSchema } from "@/lib/schemas/auth";
+import { useApiForm } from "@/hooks/use-api-form";
+import { AuthField } from "../auth-field";
 
 export function ForgotPasswordForm() {
-  const [state, formAction] = useActionState<ForgotPasswordState, FormData>(
-    forgotPasswordAction,
-    undefined,
+  const [sent, setSent] = useState(false);
+  const { pending, errors, formError, run } = useApiForm(
+    forgotPasswordSchema,
+    (values) => api.auth.forgotPassword(values.email),
+    () => setSent(true),
   );
 
-  if (state?.sent) {
+  if (sent) {
     return (
       <div
         className="flex flex-col items-start gap-3 rounded-lg border p-5"
@@ -47,25 +40,30 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="email" className="auth-label">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="tu@email.com"
-          className="auth-input"
-        />
-      </div>
-      {state?.error ? (
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run(formValues(e.currentTarget));
+      }}
+      className="flex flex-col gap-5"
+    >
+      <AuthField
+        id="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="tu@email.com"
+        error={errors.email}
+      />
+      {formError && !errors.email ? (
         <p className="auth-error" role="alert">
-          {state.error}
+          {formError}
         </p>
       ) : null}
-      <SubmitButton />
+      <button type="submit" disabled={pending} className="auth-submit">
+        {pending ? "Enviando..." : "Enviar enlace"}
+      </button>
     </form>
   );
 }

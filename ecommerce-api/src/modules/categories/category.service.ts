@@ -1,28 +1,39 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { contains, pageArgs, paginated } from "../../lib/pagination";
+import type {
+  CreateCategoryInput,
+  ListCategoriesQuery,
+  UpdateCategoryInput,
+} from "./category.schema";
 
-export interface CategoryInput {
-  slug: string;
-  name: string;
-  image?: string | null;
-  isVisible?: boolean;
-}
+const include = { _count: { select: { products: true } } } as const;
 
 export const categoryService = {
-  findAll: () =>
-    prisma.category.findMany({
-      orderBy: { name: "asc" },
-      include: { _count: { select: { products: true } } },
-    }),
+  findAll: async (query: ListCategoriesQuery) => {
+    const where: Prisma.CategoryWhereInput = {
+      ...(query.isVisible !== undefined && { isVisible: query.isVisible }),
+      ...(query.search && {
+        OR: [{ name: contains(query.search) }, { slug: contains(query.search) }],
+      }),
+    };
+    const [categories, total] = await prisma.$transaction([
+      prisma.category.findMany({
+        where,
+        orderBy: { name: "asc" },
+        include,
+        ...pageArgs(query),
+      }),
+      prisma.category.count({ where }),
+    ]);
+    return paginated(categories, total, query);
+  },
 
-  findById: (id: string) =>
-    prisma.category.findUnique({
-      where: { id },
-      include: { _count: { select: { products: true } } },
-    }),
+  findById: (id: string) => prisma.category.findUnique({ where: { id }, include }),
 
-  create: (data: CategoryInput) => prisma.category.create({ data }),
+  create: (data: CreateCategoryInput) => prisma.category.create({ data }),
 
-  update: (id: string, data: Partial<CategoryInput>) =>
+  update: (id: string, data: UpdateCategoryInput) =>
     prisma.category.update({ where: { id }, data }),
 
   remove: (id: string) => prisma.category.delete({ where: { id } }),

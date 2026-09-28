@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,73 +12,71 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { FieldError, FormAlert } from "@/components/form-message";
+import { ImageUpload } from "@/components/image-upload";
+import { useApiForm } from "@/hooks/use-api-form";
+import { api } from "@/lib/api-client";
+import type { ApiCategory } from "@/lib/api-types";
+import { formValues } from "@/lib/form-values";
+import { categorySchema } from "@/lib/schemas/category";
 import { cn } from "@/lib/utils";
-import type { ApiCategory } from "@/lib/api";
 
-export function CategoryForm({
-  initial,
-  action,
-  submitLabel,
-}: {
-  initial?: ApiCategory;
-  action: (formData: FormData) => Promise<void>;
-  submitLabel: string;
-}) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function onSubmit(formData: FormData) {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await action(formData);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Error al guardar");
-      }
-    });
-  }
+// Same form for create and edit; `initial` switches it to edit mode.
+export function CategoryForm({ initial }: { initial?: ApiCategory }) {
+  const router = useRouter();
+  const mode = initial ? "edit" : "create";
+  const { pending, errors, formError, run } = useApiForm(
+    categorySchema,
+    (v) => (initial ? api.categories.update(initial.id, v) : api.categories.create(v)),
+    () => {
+      router.push("/dashboard/categories");
+      router.refresh();
+    },
+  );
 
   return (
-    <form action={onSubmit} className="space-y-6">
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run(formValues(e.currentTarget));
+      }}
+      className="space-y-6"
+    >
       <Card>
         <CardHeader>
           <CardTitle>Datos de la categoría</CardTitle>
-          <CardDescription>
-            Se usa para agrupar productos y navegar la tienda.
-          </CardDescription>
+          <CardDescription>Se usa para agrupar productos y navegar la tienda.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-2 md:grid-cols-2 md:gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="name">Nombre *</Label>
               <Input
                 id="name"
                 name="name"
-                required
                 defaultValue={initial?.name ?? ""}
                 placeholder="Mujer"
+                aria-invalid={errors.name ? true : undefined}
               />
+              <FieldError message={errors.name} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="slug">Slug *</Label>
               <Input
                 id="slug"
                 name="slug"
-                required
                 defaultValue={initial?.slug ?? ""}
                 placeholder="mujer"
+                aria-invalid={errors.slug ? true : undefined}
               />
+              <FieldError message={errors.slug} />
             </div>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="image">URL de imagen</Label>
-            <Input
-              id="image"
-              name="image"
-              type="url"
-              defaultValue={initial?.image ?? ""}
-              placeholder="https://..."
-            />
+            <Label>Imagen</Label>
+            <ImageUpload name="image" defaultValue={initial?.image ?? ""} folder="categories" />
+            <FieldError message={errors.image} />
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -92,21 +90,14 @@ export function CategoryForm({
         </CardContent>
       </Card>
 
-      {error && (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
+      <FormAlert message={formError} />
 
       <div className="flex items-center justify-end gap-2">
-        <Link
-          href="/dashboard/categories"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
+        <Link href="/dashboard/categories" className={cn(buttonVariants({ variant: "outline" }))}>
           Cancelar
         </Link>
         <Button type="submit" disabled={pending}>
-          {pending ? "Guardando..." : submitLabel}
+          {pending ? "Guardando..." : mode === "create" ? "Crear categoría" : "Guardar cambios"}
         </Button>
       </div>
     </form>

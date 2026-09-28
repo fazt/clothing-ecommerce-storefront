@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ApiProductVariant } from "@/lib/api";
+import { FieldError } from "@/components/form-message";
+import type { FieldErrors } from "@/hooks/use-api-form";
+import type { ApiProductVariant } from "@/lib/api-types";
 
-type DraftVariant = {
+/** One editable row. Values stay strings; the product schema parses them. */
+export type VariantDraft = {
   key: string;
-  id?: string;
   size: string;
   color: string;
   sku: string;
@@ -17,21 +18,32 @@ type DraftVariant = {
   price: string;
 };
 
-function toDraft(v: ApiProductVariant, i: number): DraftVariant {
-  return {
-    key: v.id ?? `v-${i}`,
-    id: v.id,
+const FIELD_LABELS = {
+  size: "Talle",
+  color: "Color",
+  sku: "SKU",
+  stock: "Stock",
+  price: "Precio",
+} as const;
+
+type VariantField = keyof typeof FIELD_LABELS;
+
+let nextKey = 0;
+
+export function toVariantDrafts(variants: ApiProductVariant[] = []): VariantDraft[] {
+  return variants.map((v) => ({
+    key: v.id,
     size: v.size ?? "",
     color: v.color ?? "",
     sku: v.sku ?? "",
     stock: String(v.stock ?? 0),
     price: v.price ?? "",
-  };
+  }));
 }
 
-function newDraft(): DraftVariant {
+function newDraft(): VariantDraft {
   return {
-    key: `new-${Math.random().toString(36).slice(2, 8)}`,
+    key: `new-${nextKey++}`,
     size: "",
     color: "",
     sku: "",
@@ -41,47 +53,29 @@ function newDraft(): DraftVariant {
 }
 
 export function ProductVariantsField({
-  name = "variantsJson",
-  initial,
+  rows,
+  onChange,
+  errors = {},
 }: {
-  name?: string;
-  initial?: ApiProductVariant[];
+  rows: VariantDraft[];
+  onChange: (rows: VariantDraft[]) => void;
+  /** Form errors; rows read `variants.<index>.<field>`. */
+  errors?: FieldErrors;
 }) {
-  const [rows, setRows] = useState<DraftVariant[]>(
-    initial && initial.length > 0 ? initial.map(toDraft) : [],
-  );
-
-  const serialized = JSON.stringify(
-    rows
-      .filter((r) => r.size.trim() || r.color.trim())
-      .map((r) => ({
-        id: r.id,
-        size: r.size.trim() || null,
-        color: r.color.trim() || null,
-        sku: r.sku.trim() || null,
-        stock: Number(r.stock) || 0,
-        price: r.price.trim() === "" ? null : Number(r.price),
-      })),
-  );
-
-  function update(key: string, patch: Partial<DraftVariant>) {
-    setRows((prev) =>
-      prev.map((r) => (r.key === key ? { ...r, ...patch } : r)),
-    );
+  function update(key: string, patch: Partial<VariantDraft>) {
+    onChange(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
   function remove(key: string) {
-    setRows((prev) => prev.filter((r) => r.key !== key));
+    onChange(rows.filter((r) => r.key !== key));
   }
 
   function add() {
-    setRows((prev) => [...prev, newDraft()]);
+    onChange([...rows, newDraft()]);
   }
 
   return (
     <div className="space-y-3">
-      <input type="hidden" name={name} value={serialized} />
-
       {rows.length === 0 ? (
         <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
           Sin variantes. Si el producto se vende como un único SKU, puedes
@@ -97,91 +91,104 @@ export function ProductVariantsField({
             <span>Precio (override)</span>
             <span className="sr-only">Acciones</span>
           </div>
-          {rows.map((r) => (
-            <div
-              key={r.key}
-              className="grid gap-2 rounded-md border bg-muted/20 p-2 md:grid-cols-[1fr_1fr_1fr_90px_100px_auto] md:items-center md:bg-transparent md:p-0 md:border-0"
-            >
-              <div className="grid gap-1 md:gap-0">
-                <Label className="text-[10px] uppercase tracking-wide md:hidden">
-                  Talle
-                </Label>
-                <Input
-                  value={r.size}
-                  onChange={(e) => update(r.key, { size: e.target.value })}
-                  placeholder="S / 42 / Única"
-                />
-              </div>
-              <div className="grid gap-1 md:gap-0">
-                <Label className="text-[10px] uppercase tracking-wide md:hidden">
-                  Color
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={r.color}
-                    onChange={(e) =>
-                      update(r.key, { color: e.target.value })
-                    }
-                    placeholder="#111827 o Negro"
-                  />
-                  {r.color.startsWith("#") && r.color.length >= 4 ? (
-                    <span
-                      className="h-6 w-6 shrink-0 rounded-full border"
-                      style={{ backgroundColor: r.color }}
-                      aria-hidden
+          {rows.map((r, i) => {
+            const error = (field: VariantField) => errors[`variants.${i}.${field}`];
+            const invalid = (field: VariantField) => (error(field) ? true : undefined);
+            const rowError = (Object.keys(FIELD_LABELS) as VariantField[])
+              .filter((field) => error(field))
+              .map((field) => `${FIELD_LABELS[field]}: ${error(field)}`)
+              .join(" · ");
+            return (
+              <div key={r.key} className="space-y-1">
+                <div className="grid gap-2 rounded-md border bg-muted/20 p-2 md:grid-cols-[1fr_1fr_1fr_90px_100px_auto] md:items-center md:bg-transparent md:p-0 md:border-0">
+                  <div className="grid gap-1 md:gap-0">
+                    <Label className="text-[10px] uppercase tracking-wide md:hidden">
+                      Talle
+                    </Label>
+                    <Input
+                      value={r.size}
+                      onChange={(e) => update(r.key, { size: e.target.value })}
+                      placeholder="S / 42 / Única"
+                      aria-invalid={invalid("size")}
                     />
-                  ) : null}
+                  </div>
+                  <div className="grid gap-1 md:gap-0">
+                    <Label className="text-[10px] uppercase tracking-wide md:hidden">
+                      Color
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={r.color}
+                        onChange={(e) => update(r.key, { color: e.target.value })}
+                        placeholder="#111827 o Negro"
+                        aria-invalid={invalid("color")}
+                      />
+                      {r.color.startsWith("#") && r.color.length >= 4 ? (
+                        <span
+                          className="h-6 w-6 shrink-0 rounded-full border"
+                          style={{ backgroundColor: r.color }}
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="grid gap-1 md:gap-0">
+                    <Label className="text-[10px] uppercase tracking-wide md:hidden">
+                      SKU
+                    </Label>
+                    <Input
+                      value={r.sku}
+                      onChange={(e) => update(r.key, { sku: e.target.value })}
+                      placeholder="opcional"
+                      aria-invalid={invalid("sku")}
+                    />
+                  </div>
+                  <div className="grid gap-1 md:gap-0">
+                    <Label className="text-[10px] uppercase tracking-wide md:hidden">
+                      Stock
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={r.stock}
+                      onChange={(e) => update(r.key, { stock: e.target.value })}
+                      aria-invalid={invalid("stock")}
+                    />
+                  </div>
+                  <div className="grid gap-1 md:gap-0">
+                    <Label className="text-[10px] uppercase tracking-wide md:hidden">
+                      Precio (override)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={r.price}
+                      onChange={(e) => update(r.key, { price: e.target.value })}
+                      placeholder="usa precio base"
+                      aria-invalid={invalid("price")}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => remove(r.key)}
+                      aria-label="Quitar variante"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+                <FieldError message={rowError} className="px-1" />
               </div>
-              <div className="grid gap-1 md:gap-0">
-                <Label className="text-[10px] uppercase tracking-wide md:hidden">
-                  SKU
-                </Label>
-                <Input
-                  value={r.sku}
-                  onChange={(e) => update(r.key, { sku: e.target.value })}
-                  placeholder="opcional"
-                />
-              </div>
-              <div className="grid gap-1 md:gap-0">
-                <Label className="text-[10px] uppercase tracking-wide md:hidden">
-                  Stock
-                </Label>
-                <Input
-                  type="number"
-                  min="0"
-                  value={r.stock}
-                  onChange={(e) => update(r.key, { stock: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-1 md:gap-0">
-                <Label className="text-[10px] uppercase tracking-wide md:hidden">
-                  Precio (override)
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={r.price}
-                  onChange={(e) => update(r.key, { price: e.target.value })}
-                  placeholder="usa precio base"
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => remove(r.key)}
-                  aria-label="Quitar variante"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <FieldError message={errors.variants} />
 
       <Button type="button" variant="outline" size="sm" onClick={add}>
         <Plus className="mr-1 h-4 w-4" />

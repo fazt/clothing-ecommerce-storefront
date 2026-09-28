@@ -1,6 +1,8 @@
 import { getSessionUser } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { AvatarCard } from "./avatar-card";
+import { PasswordForm } from "./password-form";
 import { ProfileForm } from "./profile-form";
 
 export const metadata = {
@@ -21,7 +23,11 @@ export default async function ProfilePage() {
         title="Mi Perfil"
         description="Administra tu información personal, seguridad y preferencias de cuenta."
       />
-      <ProfileForm user={user} />
+      <div className="grid gap-6">
+        <AvatarCard user={user} />
+        <ProfileForm user={user} />
+        <PasswordForm />
+      </div>
     </div>
   );
 }

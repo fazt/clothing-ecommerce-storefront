@@ -31,17 +31,25 @@ npm run dev
 
 ## Endpoints
 
-Base path: `/api/products`
+Base path: `/api`. Every resource follows REST conventions, validates input with Zod and paginates its list endpoint. See [`docs/architecture.md`](../docs/architecture.md#módulos-del-backend) for the full list.
 
-| Method | Path   | Description        |
-| ------ | ------ | ------------------ |
-| GET    | `/`    | List all products  |
-| GET    | `/:id` | Get product by ID  |
-| POST   | `/`    | Create a product   |
-| PUT    | `/:id` | Update a product   |
-| DELETE | `/:id` | Delete a product   |
+Example: products (`/api/products`):
 
-### Example body (POST / PUT)
+| Method | Path   | Description |
+| ------ | ------ | ----------- |
+| GET    | `/`    | Paginated list: `?page=1&pageSize=10&search=&categoryId=&stock=in\|low\|out` |
+| GET    | `/:id` | Get product by ID |
+| POST   | `/`    | Create a product (admin) |
+| PATCH  | `/:id` | Partially update a product (admin) |
+| DELETE | `/:id` | Delete a product (admin) |
+
+List response:
+
+```json
+{ "data": [...], "meta": { "page": 1, "pageSize": 10, "total": 7, "totalPages": 1 } }
+```
+
+### Example body (POST / PATCH)
 
 ```json
 {

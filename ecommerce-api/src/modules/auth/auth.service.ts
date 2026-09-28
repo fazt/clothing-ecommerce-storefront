@@ -26,24 +26,19 @@ export interface PublicUser {
   id: string;
   email: string;
   name: string | null;
+  avatarUrl: string | null;
   role: Role;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const SALT_ROUNDS = 10;
+export const SALT_ROUNDS = 10;
 
-const toPublic = (u: {
-  id: string;
-  email: string;
-  name: string | null;
-  role: Role;
-  createdAt: Date;
-  updatedAt: Date;
-}): PublicUser => ({
+export const toPublic = (u: PublicUser): PublicUser => ({
   id: u.id,
   email: u.email,
   name: u.name,
+  avatarUrl: u.avatarUrl,
   role: u.role,
   createdAt: u.createdAt,
   updatedAt: u.updatedAt,
@@ -153,10 +148,5 @@ export const authService = {
     }
     const token = signToken({ sub: user.id, email: user.email, role: user.role });
     return { token, user: toPublic(user) };
-  },
-
-  async getMe(userId: string): Promise<PublicUser | null> {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    return user ? toPublic(user) : null;
   },
 };

@@ -1,9 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, unstable_rethrow } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { usersApi } from "@/lib/api";
 import { getSessionUser } from "@/lib/session";
 import { UserForm } from "../../user-form";
-import { updateUserAction } from "../../actions";
 
 export default async function EditUserPage({
   params,
@@ -11,30 +10,20 @@ export default async function EditUserPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  let user;
-  try {
-    user = await usersApi.get(id);
-  } catch {
-    notFound();
-  }
-
-  const session = await getSessionUser();
-  const isSelf = session?.id === user.id;
-  const action = updateUserAction.bind(null, id);
+  const [user, session] = await Promise.all([
+    usersApi.get(id).catch((e: unknown) => {
+      // Keep the login redirect `usersApi` throws on a 401.
+      unstable_rethrow(e);
+      return null;
+    }),
+    getSessionUser(),
+  ]);
+  if (!user) notFound();
 
   return (
     <div className="mx-auto w-full max-w-3xl">
-      <PageHeader
-        title="Editar usuario"
-        description={user.email}
-      />
-      <UserForm
-        initial={user}
-        action={action}
-        submitLabel="Guardar cambios"
-        mode="edit"
-        isSelf={isSelf}
-      />
+      <PageHeader title="Editar usuario" description={user.email} />
+      <UserForm initial={user} isSelf={session?.id === user.id} />
     </div>
   );
 }

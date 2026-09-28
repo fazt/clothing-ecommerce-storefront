@@ -1,67 +1,64 @@
 "use client";
 
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { registerAction, type AuthActionState } from "../actions";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className="auth-submit">
-      {pending ? "Creando cuenta..." : "Crear cuenta"}
-    </button>
-  );
-}
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api-client";
+import { formValues } from "@/lib/form-values";
+import { registerSchema } from "@/lib/schemas/auth";
+import { useApiForm } from "@/hooks/use-api-form";
+import { AuthField } from "../auth-field";
 
 export function RegisterForm() {
-  const [state, formAction] = useActionState<AuthActionState, FormData>(
-    registerAction,
-    undefined,
+  const router = useRouter();
+  const { pending, errors, formError, run } = useApiForm(
+    registerSchema,
+    (values) => api.auth.register(values),
+    () => {
+      router.push("/");
+      router.refresh();
+    },
   );
+
   return (
-    <form action={formAction} className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="name" className="auth-label">Nombre</label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          autoComplete="name"
-          placeholder="Tu nombre (opcional)"
-          className="auth-input"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="email" className="auth-label">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          placeholder="tu@email.com"
-          className="auth-input"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label htmlFor="password" className="auth-label">Contraseña</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={6}
-          placeholder="Al menos 6 caracteres"
-          className="auth-input"
-        />
-      </div>
-      {state?.error ? (
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run(formValues(e.currentTarget));
+      }}
+      className="flex flex-col gap-5"
+    >
+      <AuthField
+        id="name"
+        label="Nombre"
+        type="text"
+        autoComplete="name"
+        placeholder="Tu nombre (opcional)"
+        error={errors.name}
+      />
+      <AuthField
+        id="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="tu@email.com"
+        error={errors.email}
+      />
+      <AuthField
+        id="password"
+        label="Contraseña"
+        type="password"
+        autoComplete="new-password"
+        placeholder="Al menos 6 caracteres"
+        error={errors.password}
+      />
+      {formError && Object.keys(errors).length === 0 ? (
         <p className="auth-error" role="alert">
-          {state.error}
+          {formError}
         </p>
       ) : null}
-      <SubmitButton />
+      <button type="submit" disabled={pending} className="auth-submit">
+        {pending ? "Creando cuenta..." : "Crear cuenta"}
+      </button>
     </form>
   );
 }

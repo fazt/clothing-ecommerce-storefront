@@ -1,15 +1,11 @@
 import { Request, Response } from "express";
-import { Role } from "@prisma/client";
 import { userService } from "./user.service";
-
-const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isValidRole = (value: unknown): value is Role => value === "USER" || value === "ADMIN";
+import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from "./user.schema";
 
 export const userController = {
-  list: async (_req: Request, res: Response) => {
+  list: async (req: Request, res: Response) => {
     try {
-      const users = await userService.findAll();
-      res.json(users);
+      res.json(await userService.findAll(req.query as unknown as ListUsersQuery));
     } catch {
       res.status(500).json({ error: "Failed to fetch users" });
     }
@@ -27,24 +23,12 @@ export const userController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { email, password, name, role } = req.body ?? {};
-      if (typeof email !== "string" || !isValidEmail(email)) {
-        return res.status(400).json({ error: "Valid email is required" });
-      }
-      if (typeof password !== "string" || password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
-      }
-      const user = await userService.create({
-        email,
-        password,
-        name: typeof name === "string" ? name : null,
-        role: isValidRole(role) ? role : "USER",
-      });
+      const user = await userService.create(req.body as CreateUserInput);
       return res.status(201).json(user);
     } catch (error: unknown) {
       const code = (error as { code?: string }).code;
       if (code === "P2002") {
-        return res.status(409).json({ error: "Email already registered" });
+        return res.status(409).json({ error: "Ese email ya está registrado" });
       }
       return res.status(500).json({ error: "Failed to create user" });
     }
@@ -52,31 +36,17 @@ export const userController = {
 
   update: async (req: Request, res: Response) => {
     try {
-      const { name, role, password } = req.body ?? {};
-      if (role !== undefined && !isValidRole(role)) {
-        return res.status(400).json({ error: "Invalid role" });
-      }
-      if (password !== undefined && (typeof password !== "string" || password.length < 6)) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
-      }
-
+      const input = req.body as UpdateUserInput;
       // Prevent self-demotion from ADMIN → USER to avoid admin lockout
       if (
         req.user &&
-        req.user.id === req.params.id &&
-        role !== undefined &&
-        role !== req.user.role
+        req.user.id === String(req.params.id) &&
+        input.role !== undefined &&
+        input.role !== req.user.role
       ) {
-        return res
-          .status(400)
-          .json({ error: "No puedes cambiar tu propio rol" });
+        return res.status(400).json({ error: "No puedes cambiar tu propio rol" });
       }
-
-      const user = await userService.update(String(req.params.id), {
-        name: typeof name === "string" ? name : undefined,
-        role: isValidRole(role) ? role : undefined,
-        password: typeof password === "string" ? password : undefined,
-      });
+      const user = await userService.update(String(req.params.id), input);
       return res.json(user);
     } catch (error: unknown) {
       const code = (error as { code?: string }).code;

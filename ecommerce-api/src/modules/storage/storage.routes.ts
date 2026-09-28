@@ -1,7 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
 import { storageController } from "./storage.controller";
-import { requireAuth, requireAdmin } from "../../middleware/auth";
+import { requireAuth } from "../../middleware/auth";
+import { validate } from "../../lib/validate";
+import { uploadBody } from "./storage.schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -10,11 +12,12 @@ const upload = multer({
 
 const router = Router();
 
+// multer runs first so the multipart `folder` field is available to Zod.
 router.post(
-  "/upload",
+  "/",
   requireAuth,
-  requireAdmin,
   upload.single("file"),
+  validate({ body: uploadBody }),
   storageController.upload,
 );
 

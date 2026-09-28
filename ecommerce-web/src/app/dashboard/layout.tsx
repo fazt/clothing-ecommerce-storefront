@@ -25,7 +25,7 @@ export default async function DashboardLayout({
       <SidebarProvider>
         <AppSidebar user={user} />
         <SidebarInset className="bg-[color:var(--a-bg)]">
-          <DashboardHeader />
+          <DashboardHeader isAdmin={user.role === "ADMIN"} />
           <div className="flex flex-1 flex-col gap-4 p-5 md:p-8">
             {children}
           </div>
