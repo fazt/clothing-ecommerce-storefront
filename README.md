@@ -5,6 +5,36 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 - **Storefront** en vivo: https://ecommerce-clothes.lat
 - **API** en vivo: https://api.ecommerce-clothes.lat
 
+![Storefront](docs/screenshots/home.png)
+
+## Capturas
+
+### Storefront
+
+| Detalle de producto | Login |
+|---|---|
+| ![Detalle de producto](docs/screenshots/product-detail.png) | ![Login](docs/screenshots/login.png) |
+
+| Mobile: home | Mobile: producto |
+|---|---|
+| <img src="docs/screenshots/mobile-home.png" width="300" alt="Home en mobile"> | <img src="docs/screenshots/mobile-product.png" width="300" alt="Producto en mobile"> |
+
+### Dashboard admin
+
+| Reports | Reports (tema oscuro) |
+|---|---|
+| ![Reports](docs/screenshots/dashboard.png) | ![Reports tema oscuro](docs/screenshots/dashboard-dark.png) |
+
+| Productos | Órdenes |
+|---|---|
+| ![Productos](docs/screenshots/dashboard-products.png) | ![Órdenes](docs/screenshots/dashboard-orders.png) |
+
+| Command palette (`⌘K` / `Ctrl+K`) |
+|---|
+| ![Command palette](docs/screenshots/command-palette.png) |
+
+> Capturas tomadas en local con los datos de `prisma db seed`.
+
 ## Arquitectura
 
 ```
@@ -87,7 +117,8 @@ ecommerce-clothes/
 │
 ├── docs/                    # documentación adicional
 │   ├── architecture.md      # detalles de arquitectura y flujos
-│   └── database.md          # schema de base de datos
+│   ├── database.md          # schema de base de datos
+│   └── screenshots/         # capturas usadas en este README
 │
 └── README.md                # este archivo
 ```
