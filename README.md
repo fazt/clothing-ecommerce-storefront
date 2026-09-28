@@ -11,13 +11,17 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 
 ### Storefront
 
-| Detalle de producto | Login |
+| Catálogo con filtros | Detalle de producto |
 |---|---|
-| ![Detalle de producto](docs/screenshots/product-detail.png) | ![Login](docs/screenshots/login.png) |
+| ![Catálogo](docs/screenshots/products-grid.png) | ![Detalle de producto](docs/screenshots/product-detail.png) |
 
-| Mobile: home | Mobile: producto |
+| Checkout con PayPal | Home (tema oscuro) |
 |---|---|
-| <img src="docs/screenshots/mobile-home.png" width="300" alt="Home en mobile"> | <img src="docs/screenshots/mobile-product.png" width="300" alt="Producto en mobile"> |
+| ![Checkout](docs/screenshots/checkout.png) | ![Home tema oscuro](docs/screenshots/home-dark.png) |
+
+| Mobile: home | Mobile: producto | Mobile: checkout |
+|---|---|---|
+| <img src="docs/screenshots/mobile-home.png" width="250" alt="Home en mobile"> | <img src="docs/screenshots/mobile-product.png" width="250" alt="Producto en mobile"> | <img src="docs/screenshots/mobile-checkout.png" width="250" alt="Checkout en mobile"> |
 
 ### Dashboard admin
 
@@ -25,13 +29,35 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 |---|---|
 | ![Reports](docs/screenshots/dashboard.png) | ![Reports tema oscuro](docs/screenshots/dashboard-dark.png) |
 
-| Productos | Órdenes |
+| Analíticas | Clientes |
 |---|---|
-| ![Productos](docs/screenshots/dashboard-products.png) | ![Órdenes](docs/screenshots/dashboard-orders.png) |
+| ![Analíticas](docs/screenshots/dashboard-analytics.png) | ![Clientes](docs/screenshots/dashboard-customers.png) |
+
+| Productos | Nuevo producto (upload drag & drop) |
+|---|---|
+| ![Productos](docs/screenshots/dashboard-products.png) | ![Nuevo producto](docs/screenshots/dashboard-product-form.png) |
+
+| Órdenes | Descuentos |
+|---|---|
+| ![Órdenes](docs/screenshots/dashboard-orders.png) | ![Descuentos](docs/screenshots/dashboard-discounts.png) |
+
+| Categorías | Usuarios |
+|---|---|
+| ![Categorías](docs/screenshots/dashboard-categories.png) | ![Usuarios](docs/screenshots/dashboard-users.png) |
+
+| Perfil | Chat |
+|---|---|
+| ![Perfil](docs/screenshots/dashboard-profile.png) | ![Chat](docs/screenshots/dashboard-chat.png) |
 
 | Command palette (`⌘K` / `Ctrl+K`) |
 |---|
 | ![Command palette](docs/screenshots/command-palette.png) |
+
+### Auth y panel del cliente
+
+| Login | Mis pedidos (rol USER) |
+|---|---|
+| ![Login](docs/screenshots/login.png) | ![Mis pedidos](docs/screenshots/my-orders.png) |
 
 > Capturas tomadas en local con los datos de `prisma db seed`.
 
