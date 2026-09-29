@@ -3,29 +3,44 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ShoppingBag } from "lucide-react";
+import { CreditCard, ShoppingBag } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/components/cart-provider";
 import { cn } from "@/lib/utils";
 import { api, ApiError } from "@/lib/api-client";
+import type { CheckoutItemInput, PaymentMethods } from "@/lib/api-types";
 
-function checkoutErrorMessage(e: unknown): string {
-  if (!(e instanceof ApiError)) return "No se pudo iniciar el pago con PayPal.";
+type Provider = "stripe" | "paypal";
+
+const PROVIDER_NAME: Record<Provider, string> = { stripe: "Stripe", paypal: "PayPal" };
+
+// Each gateway returns the URL where the buyer completes the payment.
+const START_CHECKOUT: Record<Provider, (items: CheckoutItemInput[]) => Promise<string>> = {
+  stripe: (items) => api.payments.createStripeSession(items).then((r) => r.url),
+  paypal: (items) => api.payments.createPaypalOrder(items).then((r) => r.approveUrl),
+};
+
+function checkoutErrorMessage(provider: Provider, e: unknown): string {
+  const name = PROVIDER_NAME[provider];
+  if (!(e instanceof ApiError)) return `No se pudo iniciar el pago con ${name}.`;
   if (e.code === "PAYPAL_NOT_CONFIGURED") {
     return "PayPal aún no está configurado. Añade PAYPAL_CLIENT_ID y PAYPAL_CLIENT_SECRET al .env de la API.";
   }
+  if (e.code === "STRIPE_NOT_CONFIGURED") {
+    return "Stripe aún no está configurado. Añade STRIPE_SECRET_KEY al .env de la API.";
+  }
   if (e.status === 502) {
-    return "PayPal rechazó la solicitud. Revisa que las credenciales sean del entorno sandbox correcto.";
+    return `${name} rechazó la solicitud. Revisa las credenciales configuradas en la API.`;
   }
   if (e.status === 0 || e.status === 400 || e.status === 404) return e.message;
-  return "No se pudo iniciar el pago con PayPal.";
+  return `No se pudo iniciar el pago con ${name}.`;
 }
 
-export function CheckoutView() {
+export function CheckoutView({ methods }: { methods: PaymentMethods }) {
   const { items, subtotal, hydrated, setQuantity, removeItem } = useCart();
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<Provider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!hydrated) {
@@ -55,7 +70,7 @@ export function CheckoutView() {
   const shipping = subtotal >= 80 ? 0 : 6.99;
   const total = subtotal + shipping;
 
-  function onPayWithPaypal() {
+  function startCheckout(provider: Provider) {
     setError(null);
     const payload = items.map((i) => ({
       productId: i.id,
@@ -64,18 +79,18 @@ export function CheckoutView() {
       sizeLabel: i.sizeLabel ?? null,
       colorLabel: i.colorLabel ?? null,
     }));
-    setPending(true);
-    api.payments.createPaypalOrder(payload).then(
-      ({ approveUrl }) => {
-        window.location.href = approveUrl;
+    setPending(provider);
+    START_CHECKOUT[provider](payload).then(
+      (url) => {
+        window.location.href = url;
       },
       (e: unknown) => {
-        setPending(false);
+        setPending(null);
         if (e instanceof ApiError && e.status === 401) {
           router.push("/login?next=/checkout");
           return;
         }
-        setError(checkoutErrorMessage(e));
+        setError(checkoutErrorMessage(provider, e));
       },
     );
   }
@@ -186,17 +201,41 @@ export function CheckoutView() {
             {error}
           </p>
         ) : null}
-        <Button
-          size="lg"
-          className="mt-6 w-full"
-          onClick={onPayWithPaypal}
-          disabled={pending}
-        >
-          {pending ? "Redirigiendo a PayPal..." : "Pagar con PayPal"}
-        </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Se abrirá PayPal para completar el pago.
-        </p>
+        {methods.stripe || methods.paypal ? (
+          <>
+            <div className="mt-6 flex flex-col gap-2">
+              {methods.stripe ? (
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => startCheckout("stripe")}
+                  disabled={pending !== null}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {pending === "stripe" ? "Redirigiendo a Stripe..." : "Pagar con tarjeta"}
+                </Button>
+              ) : null}
+              {methods.paypal ? (
+                <Button
+                  size="lg"
+                  variant={methods.stripe ? "outline" : "default"}
+                  className="w-full"
+                  onClick={() => startCheckout("paypal")}
+                  disabled={pending !== null}
+                >
+                  {pending === "paypal" ? "Redirigiendo a PayPal..." : "Pagar con PayPal"}
+                </Button>
+              ) : null}
+            </div>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Te redirigiremos a la pasarela de pago para completar la compra.
+            </p>
+          </>
+        ) : (
+          <p className="mt-6 rounded-md border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
+            Todavía no hay métodos de pago configurados en la tienda.
+          </p>
+        )}
       </aside>
     </div>
   );

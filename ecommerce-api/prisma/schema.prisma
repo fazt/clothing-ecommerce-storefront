@@ -96,33 +96,35 @@ model Customer {
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  customerId      String
-  customer        Customer    @relation(fields: [customerId], references: [id])
-  userId          String?
-  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status          OrderStatus @default(PENDING)
-  total           Decimal     @db.Decimal(10, 2)
-  paymentMethod   String
-  paypalOrderId   String?     @unique
-  paypalCaptureId String?
-  items           OrderItem[]
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                    String      @id @default(uuid())
+  customerId            String
+  customer              Customer    @relation(fields: [customerId], references: [id])
+  userId                String?
+  user                  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status                OrderStatus @default(PENDING)
+  total                 Decimal     @db.Decimal(10, 2)
+  paymentMethod         String
+  paypalOrderId         String?     @unique
+  paypalCaptureId       String?
+  stripeSessionId       String?     @unique
+  stripePaymentIntentId String?
+  items                 OrderItem[]
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 }
 
 model OrderItem {
-  id          String          @id @default(uuid())
-  orderId     String
-  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product         @relation(fields: [productId], references: [id])
-  variantId   String?
-  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  sizeLabel   String?
-  colorLabel  String?
-  quantity    Int
-  unitPrice   Decimal         @db.Decimal(10, 2)
+  id         String          @id @default(uuid())
+  orderId    String
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product         @relation(fields: [productId], references: [id])
+  variantId  String?
+  variant    ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  sizeLabel  String?
+  colorLabel String?
+  quantity   Int
+  unitPrice  Decimal         @db.Decimal(10, 2)
 }
 
 enum OrderStatus {

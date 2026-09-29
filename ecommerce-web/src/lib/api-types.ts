@@ -252,7 +252,20 @@ export interface PaypalCreateResult {
   approveUrl: string;
 }
 
-export interface PaypalItemInput {
+/** Gateways with credentials configured on the API. */
+export interface PaymentMethods {
+  paypal: boolean;
+  stripe: boolean;
+}
+
+export interface StripeSessionResult {
+  orderId: string;
+  sessionId: string;
+  url: string;
+}
+
+/** Cart line sent to either gateway; prices are resolved by the API. */
+export interface CheckoutItemInput {
   productId: string;
   quantity: number;
   variantId?: string | null;

@@ -9,7 +9,8 @@ const optionalLabel = z
   .optional()
   .transform((v) => v ?? null);
 
-export const createPaypalOrderBody = z.object({
+/** Cart sent by the storefront; prices are resolved server-side. */
+export const checkoutBody = z.object({
   items: z
     .array(
       z.object({
@@ -29,4 +30,6 @@ export const createPaypalOrderBody = z.object({
 
 export const captureParams = z.object({ paypalOrderId: z.string().min(1) });
 
-export type CreatePaypalOrderInput = z.infer<typeof createPaypalOrderBody>;
+export const stripeSessionParams = z.object({ sessionId: z.string().min(1) });
+
+export type CheckoutInput = z.infer<typeof checkoutBody>;

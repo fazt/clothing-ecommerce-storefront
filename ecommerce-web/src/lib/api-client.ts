@@ -13,6 +13,7 @@ import type {
   AuthResponse,
   CategoryInput,
   CategoryListParams,
+  CheckoutItemInput,
   CustomerInput,
   CustomerListParams,
   DiscountInput,
@@ -24,11 +25,11 @@ import type {
   Paginated,
   PasswordChangeInput,
   PaypalCreateResult,
-  PaypalItemInput,
   ProductInput,
   ProductListParams,
   ProfileUpdateInput,
   RegisterInput,
+  StripeSessionResult,
   UploadFolder,
   UploadResult,
   UserCreateInput,
@@ -152,9 +153,13 @@ export const api = {
   },
 
   payments: {
-    createPaypalOrder: (items: PaypalItemInput[]) =>
+    createPaypalOrder: (items: CheckoutItemInput[]) =>
       post<PaypalCreateResult>("/payments/paypal/orders", { items }),
     capturePaypalOrder: (paypalOrderId: string) =>
       post<ApiOrder>(`/payments/paypal/orders/${encodeURIComponent(paypalOrderId)}/capture`),
+    createStripeSession: (items: CheckoutItemInput[]) =>
+      post<StripeSessionResult>("/payments/stripe/sessions", { items }),
+    confirmStripeSession: (sessionId: string) =>
+      post<ApiOrder>(`/payments/stripe/sessions/${encodeURIComponent(sessionId)}/confirm`),
   },
 };

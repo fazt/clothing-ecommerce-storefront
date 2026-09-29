@@ -14,6 +14,7 @@ import type {
   CustomerListParams,
   OrderListParams,
   Paginated,
+  PaymentMethods,
   ProductListParams,
   UserListParams,
 } from "./api-types";
@@ -99,6 +100,10 @@ export const discountsApi = {
 export const usersApi = {
   list: (params?: UserListParams) => get<Paginated<ApiUser>>("/users", params),
   get: (id: string) => get<ApiUser>(`/users/${id}`),
+};
+
+export const paymentsApi = {
+  methods: () => get<PaymentMethods>("/payments/methods"),
 };
 
 export const analyticsApi = {

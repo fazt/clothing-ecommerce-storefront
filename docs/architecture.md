@@ -18,6 +18,7 @@ Documento vivo del diseño del proyecto. Para la vista de producto (qué hace la
               │                      │
        ecommerce-clothes.lat    api.ecommerce-clothes.lat
               │                      │
+              │                      ├──▶ Stripe  (Checkout Sessions + webhook)
               │                      ├──▶ PayPal  (Orders API v2)
               │                      ├──▶ Resend  (emails)
               │                      └──▶ DO Spaces (uploads S3)
@@ -105,6 +106,18 @@ Endpoints relevantes:
 - `GET /api/me/orders` (cualquier rol autenticado)
 - `GET /api/orders` (admin)
 
+## Flujo de checkout Stripe
+
+Mismo patrón de redirect que PayPal, sobre [Stripe Checkout](https://docs.stripe.com/payments/checkout):
+
+1. `POST /api/payments/stripe/sessions` (auth): valida el carrito con precios de la DB, crea la orden `PENDING` (`paymentMethod: "Stripe"`) y una Checkout Session con `metadata.orderId`. Devuelve `{ url }` y el navegador redirige.
+2. Stripe vuelve a `STRIPE_SUCCESS_URL?session_id=…` → `checkout/return` llama `POST /api/payments/stripe/sessions/:id/confirm`, que consulta la sesión y marca la orden `PROCESSING` si `payment_status === "paid"`.
+3. `POST /api/payments/stripe/webhook` recibe `checkout.session.completed` / `async_payment_succeeded` (firma verificada con `STRIPE_WEBHOOK_SECRET`, body raw) y completa la orden aunque el comprador cierre la pestaña.
+
+El paso a `PROCESSING` es un `UPDATE … WHERE status = 'PENDING'`: retorno y webhook pueden llegar a la vez y solo uno envía el email. Si la pasarela falla al crear la sesión, la orden se descarta.
+
+`GET /api/payments/methods` → `{ stripe, paypal }` indica qué pasarelas tienen credenciales; el checkout solo muestra esas.
+
 ## Flujo de uploads
 
 Los archivos se suben **a través del backend** (no con presigned URLs) para evitar CORS del bucket:
@@ -141,7 +154,7 @@ Browser                                  API server             DO Spaces
 | `orders` | `GET /`, `GET /:id`, `POST /`, `PATCH /:id` (`{ status }`), `DELETE /:id` · filtro `status` | Admin-only |
 | `discounts` | CRUD admin-only · filtros `type`, `status` | Porcentaje (≤ 100) / fijo / envío |
 | `analytics` | `GET /summary` | Métricas + topProducts + sales series |
-| `payments` | `POST /paypal/orders`, `POST /paypal/orders/:id/capture` | Singleton PayPal client con token cache |
+| `payments` | `GET /methods` · PayPal: `POST /paypal/orders`, `POST /paypal/orders/:id/capture` · Stripe: `POST /stripe/sessions`, `POST /stripe/sessions/:id/confirm`, `POST /stripe/webhook` | Cada pasarela se activa si su clave está configurada |
 | `email` | — (service interno) | Resend; fail-safe siempre |
 | `storage` | `POST /uploads` | multipart → multer → S3 SDK → Spaces |
 

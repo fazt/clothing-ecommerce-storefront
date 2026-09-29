@@ -20,18 +20,26 @@ function getBaseUrl(): string {
   return process.env.PAYPAL_API_BASE || "https://api-m.sandbox.paypal.com";
 }
 
+function readCredentials(): { clientId: string; clientSecret: string } {
+  return {
+    clientId: (process.env.PAYPAL_CLIENT_ID ?? "").trim(),
+    clientSecret: (process.env.PAYPAL_CLIENT_SECRET ?? "").trim(),
+  };
+}
+
+/** True when real credentials are set (placeholders from .env.example don't count). */
+export function isPaypalConfigured(): boolean {
+  const { clientId, clientSecret } = readCredentials();
+  return (
+    Boolean(clientId && clientSecret) &&
+    !clientId.includes("placeholder") &&
+    !clientSecret.includes("placeholder")
+  );
+}
+
 function getCredentials(): { clientId: string; clientSecret: string } {
-  const clientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
-  const clientSecret = (process.env.PAYPAL_CLIENT_SECRET ?? "").trim();
-  if (
-    !clientId ||
-    !clientSecret ||
-    clientId.includes("placeholder") ||
-    clientSecret.includes("placeholder")
-  ) {
-    throw new PaypalNotConfiguredError();
-  }
-  return { clientId, clientSecret };
+  if (!isPaypalConfigured()) throw new PaypalNotConfiguredError();
+  return readCredentials();
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;

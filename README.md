@@ -1,6 +1,6 @@
 # ecommerce-clothes
 
-Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y panel de administración. Dos sub-apps TypeScript conectadas por una API REST, desplegadas en Railway.
+Monorepo de un e-commerce de ropa con storefront público, checkout con Stripe o PayPal y panel de administración. Dos sub-apps TypeScript conectadas por una API REST, desplegadas en Railway.
 
 - **Storefront** en vivo: https://ecommerce-clothes.lat
 - **API** en vivo: https://api.ecommerce-clothes.lat
@@ -74,6 +74,7 @@ Monorepo de un e-commerce de ropa con storefront público, checkout PayPal y pan
 │  React 19      │     │ Prisma 6       │     │                │
 └────────────────┘     └────────────────┘     └────────────────┘
         │                      │
+        │                      ├──▶ Stripe Checkout (tarjeta)
         │                      ├──▶ PayPal (sandbox/prod)
         │                      ├──▶ Resend (emails)
         │                      └──▶ DigitalOcean Spaces (imágenes)
@@ -95,7 +96,7 @@ Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
 - **Auth** (`/login`, `/register`, `/forgot-password`, `/reset-password`): JWT + bcrypt, cookie HttpOnly emitida por la API, flujo completo de reset con email.
 - **Sin Server Actions**: el navegador llama directo a la API REST (`src/lib/api-client.ts`); los Server Components solo leen (`src/lib/api.ts`).
 - **Validación con Zod** en la API (body, query y params) y en todos los formularios de la web.
-- **Checkout PayPal**: flujo redirect clásico, orden persistida en DB, email de confirmación al completar.
+- **Checkout Stripe / PayPal**: flujo redirect (Stripe Checkout o PayPal), orden persistida en DB, email de confirmación al completar. Cada pasarela aparece en el checkout solo si su clave está configurada en la API; Stripe además confirma el pago por webhook firmado.
 - **Dashboard admin** (`/dashboard`): Reports con KPIs, gráficos, stock bajo, top productos y leaderboards. CRUD de productos, categorías, órdenes, clientes, descuentos y usuarios con búsqueda, filtros por columna, paginación en servidor y copiar email al portapapeles.
 - **Command palette** (`⌘K` / `Ctrl+K`): navega entre todas las páginas, crea recursos, cambia el tema y cierra sesión.
 - **Perfil** (`/dashboard/profile`): editar datos, cambiar contraseña y avatar.
@@ -232,6 +233,9 @@ Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
 | `APP_NAME` | Nombre mostrado en emails |
 | `PAYPAL_CLIENT_ID` · `PAYPAL_CLIENT_SECRET` · `PAYPAL_API_BASE` | PayPal credentials |
 | `PAYPAL_RETURN_URL` · `PAYPAL_CANCEL_URL` | URLs de redirect post-approval |
+| `STRIPE_SECRET_KEY` | Clave secreta de Stripe; con ella se activa el pago con tarjeta |
+| `STRIPE_WEBHOOK_SECRET` | Secreto de firma del webhook `POST /api/payments/stripe/webhook` (evento `checkout.session.completed`) |
+| `STRIPE_SUCCESS_URL` · `STRIPE_CANCEL_URL` | URLs de vuelta desde Stripe Checkout |
 | `RESEND_API_KEY` · `RESEND_FROM` | Emails transaccionales |
 | `RESET_PASSWORD_URL` | Enlace que se envía por email |
 | `DO_SPACES_ENDPOINT` · `DO_SPACES_REGION` · `DO_SPACES_BUCKET` · `DO_SPACES_KEY` · `DO_SPACES_SECRET` | Upload de imágenes |

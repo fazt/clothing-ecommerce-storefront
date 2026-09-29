@@ -9,28 +9,40 @@ import type { ApiOrder } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 import { CartClearer } from "./cart-clearer";
 
+export type ReturnedPayment = { provider: "stripe" | "paypal"; id: string } | null;
+
+// Stripe: check the Checkout Session was paid. PayPal: capture the approved order.
+function confirmPayment({ provider, id }: NonNullable<ReturnedPayment>): Promise<ApiOrder> {
+  return provider === "stripe"
+    ? api.payments.confirmStripeSession(id)
+    : api.payments.capturePaypalOrder(id);
+}
+
 type CaptureState =
   | { status: "loading" }
   | { status: "done"; order: ApiOrder }
   | { status: "error"; message: string };
 
-export function CaptureView({ token }: { token: string | null }) {
+export function CaptureView({ payment }: { payment: ReturnedPayment }) {
   const [state, setState] = useState<CaptureState>(
-    token
+    payment
       ? { status: "loading" }
       : {
           status: "error",
           message:
-            "No recibimos el identificador de PayPal. Vuelve al carrito e inténtalo de nuevo.",
+            "No recibimos el identificador del pago. Vuelve al carrito e inténtalo de nuevo.",
         },
   );
   // Capturing charges the buyer: never fire it twice (StrictMode re-runs effects).
   const started = useRef(false);
 
+  const provider = payment?.provider;
+  const paymentId = payment?.id;
+
   useEffect(() => {
-    if (!token || started.current) return;
+    if (!provider || !paymentId || started.current) return;
     started.current = true;
-    api.payments.capturePaypalOrder(token).then(
+    confirmPayment({ provider, id: paymentId }).then(
       (order) => setState({ status: "done", order }),
       (e: unknown) =>
         setState({
@@ -38,13 +50,15 @@ export function CaptureView({ token }: { token: string | null }) {
           message: e instanceof Error ? e.message : "Error al confirmar el pago",
         }),
     );
-  }, [token]);
+  }, [provider, paymentId]);
 
   if (state.status === "loading") {
     return (
       <div className="flex flex-col items-center gap-4 rounded-xl border bg-background p-10 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">Confirmando tu pago con PayPal...</p>
+        <p className="text-sm text-muted-foreground">
+          Confirmando tu pago con {payment?.provider === "stripe" ? "Stripe" : "PayPal"}...
+        </p>
       </div>
     );
   }

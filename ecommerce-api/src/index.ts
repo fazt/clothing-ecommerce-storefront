@@ -19,6 +19,9 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(morgan("dev"));
 app.use(cookieParser());
+// Stripe signs the exact bytes it sends, so its webhook keeps a raw body.
+// express.json() below skips requests whose body is already parsed.
+app.use("/api/payments/stripe/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 
 app.get("/", (_req, res) => {
