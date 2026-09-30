@@ -2,9 +2,6 @@
 
 Monorepo de un e-commerce de ropa con storefront público, checkout con Stripe o PayPal y panel de administración. Dos sub-apps TypeScript conectadas por una API REST, desplegadas en Railway.
 
-- **Storefront** en vivo: https://ecommerce-clothes.lat
-- **API** en vivo: https://api.ecommerce-clothes.lat
-
 ![Storefront](docs/screenshots/home.png)
 
 ## Capturas
@@ -86,8 +83,8 @@ Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
 
 | Servicio | Tipo | Root | Dominio |
 |---|---|---|---|
-| `web` | Next.js | `ecommerce-web/` | `ecommerce-clothes.lat` |
-| `api` | Node/Express | `ecommerce-api/` | `api.ecommerce-clothes.lat` |
+| `web` | Next.js | `ecommerce-web/` | `tu-dominio.com` |
+| `api` | Node/Express | `ecommerce-api/` | `api.tu-dominio.com` |
 | `Postgres` | Managed DB | — | interno |
 
 ## Funcionalidades
@@ -229,7 +226,7 @@ Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
 | `PORT` | Puerto HTTP (default 4000) |
 | `JWT_SECRET` · `JWT_EXPIRES_IN` | Auth |
 | `CORS_ORIGINS` | Orígenes de la web que pueden llamar a la API con credenciales (separados por coma) |
-| `COOKIE_DOMAIN` | Dominio padre compartido por web y API en producción (ej. `ecommerce-clothes.lat`); vacío en local |
+| `COOKIE_DOMAIN` | Dominio padre compartido por web y API en producción (ej. `tu-dominio.com`); vacío en local |
 | `APP_NAME` | Nombre mostrado en emails |
 | `PAYPAL_CLIENT_ID` · `PAYPAL_CLIENT_SECRET` · `PAYPAL_API_BASE` | PayPal credentials |
 | `PAYPAL_RETURN_URL` · `PAYPAL_CANCEL_URL` | URLs de redirect post-approval |
@@ -273,7 +270,7 @@ Cada push a `main` dispara auto-deploy en Railway:
 
 El servicio `api` corre `prisma migrate deploy` automáticamente en cada start, así que las migraciones se aplican sin intervención manual.
 
-Como el navegador llama directo a la API, en Railway hacen falta: `CORS_ORIGINS=https://ecommerce-clothes.lat` y `COOKIE_DOMAIN=ecommerce-clothes.lat` en `api`, y `NEXT_PUBLIC_API_URL=https://api.ecommerce-clothes.lat/api` en `web` (disponible en build).
+Como el navegador llama directo a la API, en Railway hacen falta: `CORS_ORIGINS=https://tu-dominio.com` y `COOKIE_DOMAIN=tu-dominio.com` en `api`, y `NEXT_PUBLIC_API_URL=https://api.tu-dominio.com/api` en `web` (disponible en build).
 
 Seed inicial (manual, una sola vez):
 ```bash

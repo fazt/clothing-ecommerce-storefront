@@ -16,7 +16,7 @@ Documento vivo del diseño del proyecto. Para la vista de producto (qué hace la
    │          ▲                      ▲                            │
    └──────────┼──────────────────────┼────────────────────────────┘
               │                      │
-       ecommerce-clothes.lat    api.ecommerce-clothes.lat
+       tu-dominio.com           api.tu-dominio.com
               │                      │
               │                      ├──▶ Stripe  (Checkout Sessions + webhook)
               │                      ├──▶ PayPal  (Orders API v2)
@@ -56,7 +56,7 @@ Browser                                   API (Express)              Web (Next s
 ```
 
 - La cookie la emite y la borra **la API** (`POST /auth/login`, `/auth/register`, `/auth/logout`). La web solo la lee.
-- Web y API deben compartir *site* para que la cookie viaje a ambos: en local `localhost:3000` / `localhost:4000`; en producción `ecommerce-clothes.lat` / `api.ecommerce-clothes.lat` con `COOKIE_DOMAIN=ecommerce-clothes.lat`.
+- Web y API deben compartir *site* para que la cookie viaje a ambos: en local `localhost:3000` / `localhost:4000`; en producción `tu-dominio.com` / `api.tu-dominio.com` con `COOKIE_DOMAIN=tu-dominio.com`.
 - CORS de la API solo acepta los orígenes de `CORS_ORIGINS` y con `credentials: true`.
 - `requireAuth` acepta el token desde `Authorization: Bearer` o desde la cookie.
 - El `proxy.ts` de Next.js gatea `/dashboard/**` por presencia de cookie.
@@ -229,15 +229,14 @@ app/
 
 | Ambiente | Web | API |
 |---|---|---|
-| Producción | `https://ecommerce-clothes.lat` | `https://api.ecommerce-clothes.lat` |
-| Railway (fallback) | `https://web-production-49ad9.up.railway.app` | `https://api-production-089d.up.railway.app` |
+| Producción | `https://tu-dominio.com` | `https://api.tu-dominio.com` |
 | Local | `http://localhost:3000` | `http://localhost:4000` |
 
 Variables que dependen del entorno (Railway):
 
 | Servicio | Variable | Producción |
 |---|---|---|
-| `api` | `CORS_ORIGINS` | `https://ecommerce-clothes.lat` |
-| `api` | `COOKIE_DOMAIN` | `ecommerce-clothes.lat` |
-| `web` | `NEXT_PUBLIC_API_URL` | `https://api.ecommerce-clothes.lat/api` (se incrusta en **build**) |
+| `api` | `CORS_ORIGINS` | `https://tu-dominio.com` |
+| `api` | `COOKIE_DOMAIN` | `tu-dominio.com` |
+| `web` | `NEXT_PUBLIC_API_URL` | `https://api.tu-dominio.com/api` (se incrusta en **build**) |
 | `web` | `API_URL` | URL interna o pública de la API |
