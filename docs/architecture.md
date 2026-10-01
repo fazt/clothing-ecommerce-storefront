@@ -4,6 +4,8 @@ Documento vivo del diseño del proyecto. Para la vista de producto (qué hace la
 
 ## Mapa de servicios
 
+Diagrama completo (web, API, CLI, base de datos y servicios externos): [`architecture-diagram.md`](./architecture-diagram.md).
+
 ```
    ┌──────────────────────────────────────────────────────────────┐
    │                        Railway project                       │
@@ -141,7 +143,7 @@ Browser                                  API server             DO Spaces
 
 ## Módulos del backend
 
-`ecommerce-api/src/modules/` — cada módulo sigue `schema / controller / service / routes / index`. `*.schema.ts` define con Zod el body, la query y los params de cada ruta.
+`api/src/modules/` — cada módulo sigue `schema / controller / service / routes / index`. `*.schema.ts` define con Zod el body, la query y los params de cada ruta.
 
 | Módulo | Endpoints | Notas |
 |---|---|---|

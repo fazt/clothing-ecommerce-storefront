@@ -1,0 +1,2 @@
+este proyecto tiene dos entornos de desarrollo: produccion y staging. la rama main es para producción y la rama develop es para staging.
+Cada cambio debe ser realizado en la rama develop y luego se debe hacer un merge a la rama main una vez que se haya probado y aprobado en el entorno de staging. 

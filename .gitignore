@@ -5,3 +5,4 @@ dist
 
 .playwright-cli
 .playwright
+.claude/worktrees/

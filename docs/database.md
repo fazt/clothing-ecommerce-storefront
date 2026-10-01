@@ -1,6 +1,6 @@
 # Base de datos
 
-PostgreSQL accedido por Prisma 6. Fuente de verdad: [`ecommerce-api/prisma/schema.prisma`](../ecommerce-api/prisma/schema.prisma). Este documento resume las tablas y relaciones.
+PostgreSQL accedido por Prisma 6. Fuente de verdad: [`api/prisma/schema.prisma`](../api/prisma/schema.prisma). Este documento resume las tablas y relaciones.
 
 ## Diagrama ER
 
@@ -229,14 +229,7 @@ Códigos promocionales (no implementados en checkout aún, estructura lista).
 
 ## Migraciones
 
-Historial en `ecommerce-api/prisma/migrations/`:
-
-1. `20260421034219_init` — tablas iniciales
-2. `20260421045134_add_commerce_models` — categorías + customers + orders base
-3. `20260421153832_add_user_auth` — User + Role
-4. `20260421170000_add_paypal_fields` — userId, paypalOrderId, paypalCaptureId en Order
-5. `20260421180000_add_password_reset_tokens` — tabla de reset
-6. `20260421223723_add_product_variants_and_flags` — ProductVariant, flags isNew/isSale/isFeatured, OrderItem.sizeLabel/colorLabel
+Historial en `api/prisma/migrations/`.
 
 Se aplican automáticamente en cada deploy de Railway (`prisma migrate deploy` corre al start del servicio `api`).
 
@@ -244,7 +237,7 @@ Para desarrollo local, usar `npx prisma migrate dev --name <descripcion>` cuando
 
 ## Seed
 
-`ecommerce-api/prisma/seed.ts` crea:
+`api/prisma/seed.ts` crea:
 
 - 2 usuarios: `admin@admin.com` (ADMIN) y `user@user.com` (USER) — password `admin123` / `user123`
 - 4 categorías (Mujer, Hombre, Accesorios, Calzado)

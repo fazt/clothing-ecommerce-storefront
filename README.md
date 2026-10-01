@@ -66,7 +66,7 @@ Monorepo de un e-commerce de ropa con storefront público, checkout con Stripe o
 
 ```
 ┌────────────────┐     ┌────────────────┐     ┌────────────────┐
-│ ecommerce-web  │◀───▶│ ecommerce-api  │◀───▶│   Postgres     │
+│ web            │◀───▶│ api            │◀───▶│   Postgres     │
 │  Next.js 16    │     │ Express + TS   │     │   (Railway)    │
 │  React 19      │     │ Prisma 6       │     │                │
 └────────────────┘     └────────────────┘     └────────────────┘
@@ -74,6 +74,7 @@ Monorepo de un e-commerce de ropa con storefront público, checkout con Stripe o
         │                      ├──▶ Stripe Checkout (tarjeta)
         │                      ├──▶ PayPal (sandbox/prod)
         │                      ├──▶ Resend (emails)
+        │                      ├──▶ Google / GitHub (OAuth)
         │                      └──▶ DigitalOcean Spaces (imágenes)
         │
         └─▶ LocalStorage (carrito) · cookie HttpOnly emitida por la API
@@ -83,15 +84,14 @@ Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
 
 | Servicio | Tipo | Root | Dominio |
 |---|---|---|---|
-| `web` | Next.js | `ecommerce-web/` | `tu-dominio.com` |
-| `api` | Node/Express | `ecommerce-api/` | `api.tu-dominio.com` |
+| `web` | Next.js | `web/` | `tu-dominio.com` |
+| `api` | Node/Express | `api/` | `api.tu-dominio.com` |
 | `Postgres` | Managed DB | — | interno |
 
 ## Funcionalidades
 
 - **Storefront** (`/`, `/products`, `/products/[slug]`, `/checkout`): catálogo con categorías, galería de imágenes por producto, variantes (talla + color), carrito con localStorage.
-- **Auth** (`/login`, `/register`, `/forgot-password`, `/reset-password`): JWT + bcrypt, cookie HttpOnly emitida por la API, flujo completo de reset con email.
-- **Sin Server Actions**: el navegador llama directo a la API REST (`src/lib/api-client.ts`); los Server Components solo leen (`src/lib/api.ts`).
+- **Auth** (`/login`, `/register`, `/forgot-password`, `/reset-password`): JWT + bcrypt, cookie HttpOnly emitida por la API, flujo completo de reset con email e inicio de sesión con Google (OpenID Connect) y GitHub (OAuth App), ambos con PKCE. Cada botón solo aparece si la API tiene las credenciales de ese proveedor.
 - **Validación con Zod** en la API (body, query y params) y en todos los formularios de la web.
 - **Checkout Stripe / PayPal**: flujo redirect (Stripe Checkout o PayPal), orden persistida en DB, email de confirmación al completar. Cada pasarela aparece en el checkout solo si su clave está configurada en la API; Stripe además confirma el pago por webhook firmado.
 - **Dashboard admin** (`/dashboard`): Reports con KPIs, gráficos, stock bajo, top productos y leaderboards. CRUD de productos, categorías, órdenes, clientes, descuentos y usuarios con búsqueda, filtros por columna, paginación en servidor y copiar email al portapapeles.
@@ -105,7 +105,7 @@ Tres servicios en Railway en un único proyecto (auto-deploy en push a `main`):
 
 ```
 ecommerce-clothes/
-├── ecommerce-api/           # Node + Express + Prisma
+├── api/                     # Node + Express + Prisma
 │   ├── src/
 │   │   ├── index.ts         # entry point
 │   │   ├── routes.ts        # router raíz
@@ -113,7 +113,8 @@ ecommerce-clothes/
 │   │   ├── middleware/      # requireAuth, requireAdmin
 │   │   ├── modules/         # auth, me, users, products, categories,
 │   │   │                    # customers, orders, discounts,
-│   │   │                    # analytics, payments, email, storage
+│   │   │                    # analytics, payments, email, storage,
+│   │   │                    # newsletter (auth incluye Google y GitHub)
 │   │   │                    # (cada uno con *.schema.ts de Zod)
 │   │   └── types/express.d.ts
 │   ├── prisma/
@@ -124,7 +125,7 @@ ecommerce-clothes/
 │   │   └── create-admin.ts  # promueve un admin directo en DB
 │   └── nixpacks.toml        # config Railway (Node 20)
 │
-├── ecommerce-web/           # Next.js 16 App Router
+├── web/                     # Next.js 16 App Router
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── (store)/     # storefront público
@@ -133,35 +134,41 @@ ecommerce-clothes/
 │   │   ├── components/      # UI compartida
 │   │   │   ├── dashboard/   # sidebar, nav, header del admin
 │   │   │   └── ui/          # shadcn primitives
-│   │   └── lib/
-│   │       ├── api-client.ts # cliente REST del navegador (mutaciones, tablas)
-│   │       ├── api.ts       # lecturas desde Server Components
-│   │       ├── api-types.ts # tipos compartidos
-│   │       ├── schemas/     # esquemas Zod de formularios
-│   │       ├── products.ts  # fetch + mapping al dominio
-│   │       └── session.ts   # lee la cookie + getSessionUser
-│   ├── proxy.ts             # middleware Next 16 (auth gate)
+│   │   ├── lib/
+│   │   │   ├── api-client.ts # cliente REST del navegador (mutaciones, tablas)
+│   │   │   ├── api.ts       # lecturas desde Server Components
+│   │   │   ├── api-types.ts # tipos compartidos
+│   │   │   ├── schemas/     # esquemas Zod de formularios
+│   │   │   ├── products.ts  # fetch + mapping al dominio
+│   │   │   └── session.ts   # lee la cookie + getSessionUser
+│   │   └── proxy.ts         # middleware Next 16 (auth gate)
 │   └── nixpacks.toml
+│
+├── cli/                     # CLI `ecom` (Commander) que consume la API
+│   └── src/commands/        # un archivo por módulo de la API
+│
+├── mcp/                     # servidor MCP que expone la API como herramientas
 │
 ├── docs/                    # documentación adicional
 │   ├── architecture.md      # detalles de arquitectura y flujos
+│   ├── architecture-diagram.md # diagrama Mermaid de toda la arquitectura
 │   ├── database.md          # schema de base de datos
 │   └── screenshots/         # capturas usadas en este README
 │
 └── README.md                # este archivo
 ```
 
-Más detalles: [`docs/architecture.md`](./docs/architecture.md) y [`docs/database.md`](./docs/database.md).
+Más detalles: [`docs/architecture-diagram.md`](./docs/architecture-diagram.md) (diagrama), [`docs/architecture.md`](./docs/architecture.md) y [`docs/database.md`](./docs/database.md).
 
 ## Stack
 
-**Backend (`ecommerce-api`)**
+**Backend (`api`)**
 - Node.js 20 · TypeScript 5 · Express 4
 - Prisma 6 · PostgreSQL
 - bcrypt · jsonwebtoken · multer
-- @aws-sdk/client-s3 · resend · dotenv
+- @aws-sdk/client-s3 · resend · google-auth-library · dotenv
 
-**Frontend (`ecommerce-web`)**
+**Frontend (`web`)**
 - Next.js 16 (App Router, Turbopack) · React 19
 - Tailwind CSS 4 · shadcn/ui · base-ui · lucide-react
 - next-themes · tailwind-merge · class-variance-authority
@@ -191,7 +198,7 @@ docker run -d --name pg-ecommerce -p 5434:5432 \
 ### 3. Backend
 
 ```bash
-cd ecommerce-api
+cd api
 cp .env.example .env          # completa las variables
 npm install
 npx prisma migrate dev         # crea tablas + aplica migraciones
@@ -202,7 +209,7 @@ npm run dev                    # http://localhost:4000
 ### 4. Frontend
 
 ```bash
-cd ecommerce-web
+cd web
 cp .env.example .env.local     # API_URL y NEXT_PUBLIC_API_URL
 npm install
 npm run dev                    # http://localhost:3000
@@ -217,7 +224,7 @@ npm run dev                    # http://localhost:3000
 
 ## Variables de entorno
 
-Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
+Ver `api/.env.example` y `web/.env.example`. Resumen:
 
 **API**
 | Variable | Propósito |
@@ -227,6 +234,11 @@ Ver `ecommerce-api/.env.example` y `ecommerce-web/.env.example`. Resumen:
 | `JWT_SECRET` · `JWT_EXPIRES_IN` | Auth |
 | `CORS_ORIGINS` | Orígenes de la web que pueden llamar a la API con credenciales (separados por coma) |
 | `COOKIE_DOMAIN` | Dominio padre compartido por web y API en producción (ej. `tu-dominio.com`); vacío en local |
+| `WEB_URL` | Origen de la web al que vuelve el navegador tras iniciar sesión con un proveedor OAuth (ej. `https://tu-dominio.com`); si está vacío, se usa el primer valor de `CORS_ORIGINS` |
+| `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` | Cliente OAuth de Google Cloud; con ellos aparece el botón «Continuar con Google» |
+| `GOOGLE_CALLBACK_URL` | URL de vuelta `…/api/auth/google/callback`; debe figurar tal cual en los URI de redireccionamiento autorizados del cliente OAuth |
+| `GITHUB_CLIENT_ID` · `GITHUB_CLIENT_SECRET` | OAuth App de GitHub; con ellos aparece el botón «Continuar con GitHub» |
+| `GITHUB_CALLBACK_URL` | URL de vuelta `…/api/auth/github/callback`; debe coincidir exactamente con una de las «Authorization callback URL» de la OAuth App |
 | `APP_NAME` | Nombre mostrado en emails |
 | `PAYPAL_CLIENT_ID` · `PAYPAL_CLIENT_SECRET` · `PAYPAL_API_BASE` | PayPal credentials |
 | `PAYPAL_RETURN_URL` · `PAYPAL_CANCEL_URL` | URLs de redirect post-approval |
@@ -254,27 +266,40 @@ npm run prisma:seed                                # poblar DB con datos demo
 npm run create-admin -- --email <x> --password <y>  # promover admin
 ```
 
-### Frontend
+### CLI
 ```bash
-npm run dev        # Next.js dev
-npm run build
-npm start
+cd cli && npm install && npm run build && npm link
+ecom login -e admin@admin.com          # pide la contraseña
+ecom products ls --stock low
+ecom orders status <id> shipped
+ecom --api https://<api-staging> analytics
 ```
+
+Comandos, opciones y uso en scripts: [`cli/README.md`](./cli/README.md).
+
+### MCP
+```bash
+cd mcp && npm install && npm run build
+```
+
+Registrado en `.mcp.json` como `ecommerce` (API local). Reutiliza la sesión de `ecom login`. Herramientas y variables: [`mcp/README.md`](./mcp/README.md).
 
 ## Deploy
 
 Cada push a `main` dispara auto-deploy en Railway:
 
-- Cambios en `ecommerce-api/**` → redeploy del servicio `api`
-- Cambios en `ecommerce-web/**` → redeploy del servicio `web`
+- Cambios en `api/**` → redeploy del servicio `api`
+- Cambios en `web/**` → redeploy del servicio `web`
 
 El servicio `api` corre `prisma migrate deploy` automáticamente en cada start, así que las migraciones se aplican sin intervención manual.
 
 Como el navegador llama directo a la API, en Railway hacen falta: `CORS_ORIGINS=https://tu-dominio.com` y `COOKIE_DOMAIN=tu-dominio.com` en `api`, y `NEXT_PUBLIC_API_URL=https://api.tu-dominio.com/api` en `web` (disponible en build).
 
+Para el login social, define en `api` las variables `GOOGLE_*`, `GITHUB_*` y `WEB_URL` de cada entorno, y registra la URL `https://<api>/api/auth/{google,github}/callback` en Google Cloud Console y en la OAuth App de GitHub.
+
 Seed inicial (manual, una sola vez):
 ```bash
-cd ecommerce-api
+cd api
 DATABASE_URL='postgresql://...@shinkansen.proxy.rlwy.net:.../railway' \
   npx prisma db seed
 ```
