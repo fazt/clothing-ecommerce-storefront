@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ecommerce": {
+      "command": "node",
+      "args": ["mcp/dist/index.js"],
+      "env": {
+        "ECOM_API_URL": "http://localhost:4000"
+      }
+    }
+  }
+}
