@@ -8,14 +8,17 @@ flowchart LR
     direction TB
     BROWSER["Navegador<br/>clientes y admins"]
     CLI["CLI ecom<br/>cli · Commander"]
+    AGENT["Cliente MCP<br/>Claude Code · Codex"]
   end
+
+  MCPS["Servidor MCP<br/>mcp · stdio<br/>sesión de la CLI"]
 
   subgraph WEB["web · Next.js 16 App Router · Railway"]
     direction TB
     PROXY["proxy.ts<br/>protege /dashboard/** por cookie"]
     STORE["(store)<br/>home · catálogo · producto<br/>carrito · checkout"]
-    AUTHUI["(auth)<br/>login · registro<br/>recuperar contraseña"]
-    DASH["dashboard<br/>admin: CRUD y analytics<br/>cliente: mis pedidos y perfil"]
+    AUTHUI["(auth)<br/>login · registro · recuperar contraseña<br/>botones Google / GitHub"]
+    DASH["dashboard<br/>admin: CRUD, analytics, chat y ajustes<br/>cliente: mis pedidos y perfil"]
     RSC["Server Components<br/>lib/api.ts · lecturas"]
     SA["Server Action<br/>newsletter-actions.ts"]
     CC["Client Components<br/>lib/api-client.ts<br/>mutaciones y tablas"]
@@ -25,7 +28,7 @@ flowchart LR
     direction TB
     MW["Middleware<br/>CORS · cookie-parser · validación Zod<br/>requireAuth · requireAdmin"]
     PUB["Públicos<br/>products y categories (lectura)<br/>newsletter · payments/methods"]
-    ACC["Cuenta<br/>auth: emite la cookie JWT<br/>me: perfil y pedidos"]
+    ACC["Cuenta<br/>auth: emite la cookie JWT<br/>OAuth Google y GitHub (PKCE)<br/>me: perfil y pedidos"]
     ADM["Solo ADMIN<br/>users · customers · orders<br/>discounts · analytics<br/>escritura de products y categories"]
     PAY["payments<br/>Stripe Checkout · PayPal Orders v2"]
     UPL["storage<br/>POST /uploads · multer"]
@@ -33,10 +36,11 @@ flowchart LR
     PRISMA["Prisma Client"]
   end
 
-  DB[("PostgreSQL · Railway<br/>User · Product · ProductVariant<br/>Category · Customer · Order<br/>Discount · NewsletterSubscriber")]
+  DB[("PostgreSQL · Railway<br/>User · PasswordResetToken<br/>Product · ProductVariant · Category<br/>Customer · Order · OrderItem<br/>Discount · NewsletterSubscriber")]
 
   subgraph EXT["Servicios externos"]
     direction TB
+    OAUTH["Google · GitHub<br/>OAuth"]
     STRIPE["Stripe"]
     PAYPAL["PayPal"]
     RESEND["Resend<br/>emails"]
@@ -53,12 +57,16 @@ flowchart LR
   RSC -->|"cookie reenviada como Bearer"| MW
   SA -->|"POST /newsletter"| MW
   CLI -->|"REST + Bearer<br/>token leído de Set-Cookie"| MW
+  AGENT -->|"stdio"| MCPS
+  MCPS -->|"REST + Bearer<br/>token de ~/.ecom/config.json"| MW
 
   MW --> PUB & ACC & ADM & PAY & UPL
   PUB & ACC & ADM & PAY --> PRISMA
   PRISMA --> DB
 
-  ACC -->|"reset de contraseña"| MAIL
+  ACC -->|"bienvenida y reset de contraseña"| MAIL
+  ACC -->|"canjea code / perfil"| OAUTH
+  BROWSER -.->|"consentimiento OAuth"| OAUTH
   PAY -->|"confirmación de pedido"| MAIL
   MAIL --> RESEND
   PAY -->|"crea sesión / captura"| STRIPE
@@ -74,16 +82,17 @@ flowchart LR
   classDef data fill:#fff7ed,stroke:#ea580c,color:#431407
   classDef ext fill:#f5f5f4,stroke:#78716c,color:#1c1917
 
-  class BROWSER,CLI user
+  class BROWSER,CLI,AGENT user
+  class MCPS api
   class PROXY,STORE,AUTHUI,DASH,RSC,SA,CC web
   class MW,PUB,ACC,ADM,PAY,UPL,MAIL,PRISMA api
   class DB data
-  class STRIPE,PAYPAL,RESEND,SPACES ext
+  class OAUTH,STRIPE,PAYPAL,RESEND,SPACES ext
 ```
 
 **Cómo leerlo**
 
 - Flecha continua: llamada directa. Flecha punteada: redirección del navegador o webhook.
-- La sesión es un JWT que la API entrega en la cookie HttpOnly `auth-token`. El navegador la manda sola; el servidor de Next y el CLI la envían como `Authorization: Bearer`.
+- La sesión es un JWT que la API entrega en la cookie HttpOnly `auth-token`, tanto con email y contraseña como al volver de Google o GitHub. El navegador la manda sola; el servidor de Next, el CLI y el servidor MCP la envían como `Authorization: Bearer`.
 - Hay tres caminos de la web a la API: Client Components (mutaciones), Server Components (lecturas) y la Server Action del newsletter.
-- Toda escritura en la base pasa por la API. Ni la web ni el CLI tocan Postgres directamente.
+- Toda escritura en la base pasa por la API. Ni la web, ni el CLI, ni el servidor MCP tocan Postgres directamente (los scripts `prisma db seed` y `create-admin` de `api/` sí, para tareas de mantenimiento).

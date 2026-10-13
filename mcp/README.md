@@ -23,11 +23,31 @@ Reutiliza la sesión de la CLI: haz `ecom login --api <url>` con la misma URL y 
 | `ECOM_API_URL` | URL de la API (por defecto, la guardada por la CLI o `http://localhost:4000`) |
 | `ECOM_TOKEN` | Token JWT; tiene prioridad sobre la sesión de la CLI |
 | `ECOM_CONFIG` | Ruta alternativa al archivo de config de la CLI |
-| `ECOM_READONLY=1` | Registra solo las herramientas de lectura (úsalo contra producción) |
+| `ECOM_READONLY` | `1` o `true` registra solo las herramientas de lectura (úsalo contra producción) |
 
 ## Herramientas
 
-- **Lectura:** `whoami`, `list_products`, `get_product`, `list_categories`, `list_orders`, `get_order`, `list_customers`, `get_customer`, `list_discounts`, `list_users`, `analytics_summary`. Los `list_*` aceptan `search`, `page`, `pageSize` (máx. 100) y los filtros del API.
-- **Escritura:** `update_order_status`, `update_product` (no toca variantes), `create_discount`.
+Los `list_*` aceptan `search`, `page` y `pageSize` (máx. 100, por defecto 10) además de sus filtros. Todas devuelven la respuesta JSON de la API.
 
-No hay herramientas de borrado a propósito; para eso usa la CLI o el dashboard.
+| Herramienta | Tipo | Llama a | Parámetros | Rol |
+|---|---|---|---|---|
+| `whoami` | Lectura | `GET /me` | — (devuelve también la URL de la API) | Sesión |
+| `list_products` | Lectura | `GET /products` | `categoryId`, `stock` (`in` \| `low` \| `out`) | Público |
+| `get_product` | Lectura | `GET /products/:id` | `id` | Público |
+| `list_categories` | Lectura | `GET /categories` | `isVisible` | Público |
+| `list_orders` | Lectura | `GET /orders` | `status` | ADMIN |
+| `get_order` | Lectura | `GET /orders/:id` | `id` | ADMIN |
+| `list_customers` | Lectura | `GET /customers` | `segment` (`new` \| `returning` \| `vip`) | ADMIN |
+| `get_customer` | Lectura | `GET /customers/:id` | `id` | ADMIN |
+| `list_discounts` | Lectura | `GET /discounts` | `type`, `status` | ADMIN |
+| `list_users` | Lectura | `GET /users` | `role` | ADMIN |
+| `analytics_summary` | Lectura | `GET /analytics/summary` | — | ADMIN |
+| `update_order_status` | Escritura | `PATCH /orders/:id` | `id`, `status` | ADMIN |
+| `update_product` | Escritura | `PATCH /products/:id` | `id` + `name`, `description`, `price`, `stock`, `categoryId`, `isNew`, `isSale`, `isFeatured` (todos opcionales; no toca variantes ni imágenes) | ADMIN |
+| `create_discount` | Escritura | `POST /discounts` | `code`, `type`, `value` + `description`, `limit`, `expiresAt`, `status` | ADMIN |
+
+Con `ECOM_READONLY` activo no se registran las tres de escritura. No hay herramientas de borrado a propósito; para eso usa la CLI o el dashboard.
+
+## Desarrollo
+
+`npm run dev` (tsx), `npm run build`, `npm start` (`node dist/index.js`, también expuesto como binario `ecom-mcp`) y `npm run typecheck`. Todo está en `src/index.ts` (registro de herramientas) y `src/client.ts` (URL, token y `fetch` a la API).
