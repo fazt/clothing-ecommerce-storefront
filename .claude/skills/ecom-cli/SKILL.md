@@ -13,7 +13,7 @@ CLI `ecom` en `cli/` (Node ≥ 22.12 + Commander) que llama a la API de `api/`. 
 
 ## API y sesión
 - URL: `--api <url>` > `ECOM_API_URL` > guardada con `ecom config set-url <url>` > `http://localhost:4000`. Acepta la URL con o sin `/api`.
-- Local `http://localhost:4000`; staging (rama `develop`): pide la URL al usuario; producción (rama `main`): `https://api.ecommerce-clothes.lat` o `https://api-production-089d.up.railway.app`.
+- Local `http://localhost:4000`; staging (rama `dev`): pide la URL al usuario; producción (rama `main`): pide la URL al usuario y no la uses sin su confirmación explícita.
 - Trabaja contra local o staging. Producción solo con confirmación explícita del usuario. Prefiere `--api` por comando a `config set-url` (que cambia el destino de todo lo siguiente).
 - Antes de operar: `ecom config show` (API en uso y su origen) y `ecom health` (si responde y con qué sesión).
 - Cada URL guarda su propia sesión en `~/.ecom/config.json` (`ECOM_CONFIG` cambia la ruta). `ECOM_TOKEN` sustituye la sesión guardada.

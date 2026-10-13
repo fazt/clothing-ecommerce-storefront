@@ -48,7 +48,20 @@ Cada URL guarda su propia sesión, así que un login en staging nunca se envía 
 | `request <método> <ruta> [-d json] [-q k=v]` | Petición cruda a la API con la sesión actual |
 | `health` · `config show` · `config set-url <url>` | Diagnóstico y configuración |
 
-`ecom <comando> --help` lista todas las opciones. Los comandos de admin requieren una sesión con rol `ADMIN`.
+`ecom <comando> --help` lista todas las opciones. Los comandos de admin requieren una sesión con rol `ADMIN`. Alias: `list` → `ls`, `get` → `show`, `delete` → `rm`. Opciones globales: `--api <url>`, `--json`, `-v/--version`.
+
+### Filtros y campos por recurso
+
+| Recurso | Filtros de `list` | Campos de `create` / `update` |
+|---|---|---|
+| `products` | `--category <id>`, `--stock in\|low\|out` | `--name`, `--description`, `--price`, `--stock`, `--image`, `--images <urls>`, `--category`, `--new`, `--sale`, `--featured` |
+| `categories` | `--visible true\|false` | `--slug`, `--name`, `--image`, `--visible` |
+| `customers` | `--segment new\|returning\|vip` | `--name`, `--email` |
+| `discounts` | `--type`, `--status` | `--code`, `--description`, `--type`, `--value`, `--limit`, `--status`, `--expires` |
+| `users` | `--role USER\|ADMIN` | `--email` (solo `create`), `--password`, `--name`, `--role` |
+| `orders` | `--status` | `create`: `--customer`, `--payment`, `--item <productId[:qty[:variantId]]>`, `--status` |
+
+Todos los `list` aceptan `-p/--page`, `-n/--page-size` (default 20, máx. 100), `-s/--search` y `-a/--all`. Los valores de enums no distinguen mayúsculas (`--status pending`).
 
 ### Listados
 
@@ -83,7 +96,8 @@ ecom products create -d @producto.json
 ### Scripts y CI
 
 - `--json` imprime la respuesta de la API tal cual; los errores de la API salen por stderr como JSON. Cualquier fallo termina con código de salida `1`.
-- `ECOM_TOKEN` usa ese token en lugar de la sesión guardada; `ECOM_CONFIG` cambia la ruta del archivo de configuración.
+- `ECOM_TOKEN` usa ese token en lugar de la sesión guardada; `ECOM_CONFIG` cambia la ruta del archivo de configuración; `ECOM_PASSWORD` evita el prompt de `login`.
+- `delete` sin `--yes` falla si no hay terminal interactiva.
 
 ```bash
 ecom --json products ls --all | jq '.data[] | select(.stock == 0) | .name'
@@ -108,5 +122,7 @@ src/
     ├── resource.ts   # fábrica CRUD (list/get/create/update/delete)
     └── *.ts          # un archivo por módulo de la API
 ```
+
+Scripts: `npm run dev` (tsx), `npm run build`, `npm start`, `npm run typecheck`.
 
 Para añadir un recurso nuevo, define sus columnas, filtros y campos en `commands/<recurso>.ts` con `resourceCommand()` y regístralo en `src/index.ts`.
