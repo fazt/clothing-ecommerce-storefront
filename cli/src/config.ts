@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { CliError } from "./errors.js";
 
-export const DEFAULT_API_URL = "http://127.0.0.1:4057";
+export const DEFAULT_API_URL = "http://localhost:4000";
 
 export interface Session {
   token: string;
@@ -39,7 +39,7 @@ export function normalizeApiUrl(url: string): string {
   try {
     new URL(trimmed);
   } catch {
-    throw new CliError(`URL de API inválida: ${url}`, "Ejemplo: http://127.0.0.1:4057");
+    throw new CliError(`URL de API inválida: ${url}`, "Ejemplo: http://localhost:4000");
   }
   return trimmed;
 }

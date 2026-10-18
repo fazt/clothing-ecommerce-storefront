@@ -1,6 +1,5 @@
-import { Prisma } from "../../generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { PAID_STATUSES } from "../payments";
 import { contains, paginated } from "../../lib/pagination";
 import type {
   CreateCustomerInput,
@@ -27,8 +26,6 @@ export const customerService = {
       orderBy: { createdAt: "desc" },
       include: {
         orders: {
-          // Gasto y segmento solo con órdenes cobradas.
-          where: { status: { in: PAID_STATUSES } },
           select: { total: true, createdAt: true },
           orderBy: { createdAt: "desc" },
         },
@@ -70,8 +67,7 @@ export const customerService = {
       },
     });
     if (!c) return null;
-    const paidOrders = c.orders.filter((o) => PAID_STATUSES.includes(o.status));
-    const totalSpent = paidOrders.reduce((sum, o) => sum + Number(o.total), 0);
+    const totalSpent = c.orders.reduce((sum, o) => sum + Number(o.total), 0);
     return {
       ...c,
       ordersCount: c.orders.length,

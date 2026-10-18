@@ -22,7 +22,7 @@ ecom whoami
 ecom products list --stock low
 ```
 
-Por defecto apunta a `http://127.0.0.1:4057`. Para staging o producción:
+Por defecto apunta a `http://localhost:4000`. Para staging o producción:
 
 ```bash
 ecom config set-url https://api.staging.example.com   # se guarda

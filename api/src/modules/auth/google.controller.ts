@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { logger } from "../../lib/logger";
 import { setAuthCookie } from "../../lib/auth-cookie";
 import { createGoogleAuthRequest, isGoogleConfigured, verifyGoogleCode } from "./google.client";
 import { googleAuthService } from "./google.service";
@@ -38,7 +37,7 @@ export const googleController = {
       saveOAuthState(req, res, PROVIDER, { state, nonce, codeVerifier, redirect });
       return res.redirect(url);
     } catch (error) {
-      logger.error({ detail: describeOAuthError(error) }, "auth.google: no se pudo iniciar el login");
+      console.error("[auth.google] could not start sign-in:", describeOAuthError(error));
       return redirectToLoginError(res, PROVIDER, "failed", redirect);
     }
   },
@@ -69,7 +68,7 @@ export const googleController = {
       return res.redirect(destination);
     } catch (err) {
       const reason = REASON_BY_CODE[(err as { code?: string }).code ?? ""];
-      if (!reason) logger.error({ detail: describeOAuthError(err) }, "auth.google: falló el login");
+      if (!reason) console.error("[auth.google] sign-in failed:", describeOAuthError(err));
       return redirectToLoginError(res, PROVIDER, reason ?? "failed", redirect);
     }
   },

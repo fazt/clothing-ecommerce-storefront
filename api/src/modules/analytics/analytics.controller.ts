@@ -2,11 +2,11 @@ import { Request, Response } from "express";
 import { analyticsService } from "./analytics.service";
 
 export const analyticsController = {
-  summary: async (req: Request, res: Response) => {
+  summary: async (_req: Request, res: Response) => {
     try {
       res.json(await analyticsService.summary());
     } catch (error) {
-      req.log?.error({ err: error }, "analytics: no se pudo calcular el resumen");
+      console.error(error);
       res.status(500).json({ error: "Failed to compute analytics" });
     }
   },

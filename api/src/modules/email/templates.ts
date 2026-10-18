@@ -4,10 +4,8 @@ export interface EmailTemplate {
   text: string;
 }
 
-import { env } from "../../config/env";
-
-const APP_NAME = env.APP_NAME;
-const STORE_URL = new URL(env.WEB_URL).origin;
+const APP_NAME = process.env.APP_NAME || "Atelier";
+const STORE_URL = process.env.PAYPAL_RETURN_URL?.replace(/\/checkout\/return$/, "") || "http://localhost:3000";
 
 const baseStyles = `
   body, html { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #111; background: #f4f4f5; }
@@ -110,130 +108,62 @@ Si no fuiste tú, puedes ignorar este mensaje.`;
   return { subject, html, text };
 }
 
-
 export interface ConfirmationItem {
   name: string;
   quantity: number;
   unitPrice: number;
 }
 
-const money = (n: number) => `$${n.toFixed(2)}`;
-
 export function orderConfirmationEmail(params: {
   name: string | null;
-  orderNumber: number;
-  subtotal: number;
-  discount: number;
-  shipping: number;
+  orderId: string;
   total: number;
   paymentMethod: string;
-  couponCode: string | null;
   items: ConfirmationItem[];
 }): EmailTemplate {
   const greeting = params.name ? `Hola ${escape(params.name)}` : "Hola";
-  const subject = `Confirmación de compra #${params.orderNumber} — ${APP_NAME}`;
+  const shortId = params.orderId.slice(0, 8).toUpperCase();
+  const subject = `Confirmación de compra #${shortId} — ${APP_NAME}`;
   const rows = params.items
     .map(
       (i) => `<tr>
         <td>${escape(i.name)}</td>
         <td style="text-align:center">${i.quantity}</td>
-        <td style="text-align:right">${money(i.unitPrice * i.quantity)}</td>
+        <td style="text-align:right">$${(i.unitPrice * i.quantity).toFixed(2)}</td>
       </tr>`,
     )
     .join("");
-  const discountRow =
-    params.discount > 0
-      ? `<p class="muted" style="text-align:right">Descuento${params.couponCode ? ` (${escape(params.couponCode)})` : ""}: −${money(params.discount)}</p>`
-      : "";
   const html = shell(
     subject,
     `
     <p>${greeting},</p>
     <p>¡Gracias por tu compra en <strong>${APP_NAME}</strong>! Hemos recibido tu pago y tu pedido está en preparación.</p>
-    <p><strong>Pedido:</strong> #${params.orderNumber}<br/><strong>Método de pago:</strong> ${escape(params.paymentMethod)}</p>
+    <p><strong>Pedido:</strong> #${shortId}<br/><strong>Método de pago:</strong> ${escape(params.paymentMethod)}</p>
     <table class="table">
       <thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Subtotal</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <p class="muted" style="text-align:right">Subtotal: ${money(params.subtotal)}</p>
-    ${discountRow}
-    <p class="muted" style="text-align:right">Envío: ${params.shipping > 0 ? money(params.shipping) : "Gratis"}</p>
-    <p class="total">Total: ${money(params.total)}</p>
+    <p class="total">Total: $${params.total.toFixed(2)}</p>
     <p style="text-align:center; margin: 28px 0;"><a href="${STORE_URL}/dashboard/my-orders" class="btn">Ver mis pedidos</a></p>
     <p class="muted">Te avisaremos cuando tu pedido sea enviado. Si tienes alguna duda, responde a este correo.</p>
     `,
   );
   const itemsText = params.items
-    .map((i) => `- ${i.name} x${i.quantity}  ${money(i.unitPrice * i.quantity)}`)
+    .map(
+      (i) => `- ${i.name} x${i.quantity}  $${(i.unitPrice * i.quantity).toFixed(2)}`,
+    )
     .join("\n");
-  const discountText = params.discount > 0 ? `\nDescuento: -${money(params.discount)}` : "";
   const text = `${greeting},
 
 Gracias por tu compra en ${APP_NAME}.
 
-Pedido #${params.orderNumber}
+Pedido #${shortId}
 Método de pago: ${params.paymentMethod}
 
 ${itemsText}
 
-Subtotal: ${money(params.subtotal)}${discountText}
-Envío: ${params.shipping > 0 ? money(params.shipping) : "Gratis"}
-Total: ${money(params.total)}
+Total: $${params.total.toFixed(2)}
 
 Ver tus pedidos: ${STORE_URL}/dashboard/my-orders`;
-  return { subject, html, text };
-}
-
-export function orderShippedEmail(params: {
-  name: string | null;
-  orderNumber: number;
-  shippingMethod: string | null;
-  trackingNumber: string | null;
-}): EmailTemplate {
-  const greeting = params.name ? `Hola ${escape(params.name)}` : "Hola";
-  const subject = `Tu pedido #${params.orderNumber} va en camino — ${APP_NAME}`;
-  const tracking = params.trackingNumber
-    ? `<p><strong>Número de seguimiento:</strong> ${escape(params.trackingNumber)}</p>`
-    : "";
-  const via = params.shippingMethod ? ` con <strong>${escape(params.shippingMethod)}</strong>` : "";
-  const html = shell(
-    subject,
-    `
-    <p>${greeting},</p>
-    <p>¡Buenas noticias! Tu pedido <strong>#${params.orderNumber}</strong> salió de nuestro almacén${via}.</p>
-    ${tracking}
-    <p style="text-align:center; margin: 28px 0;"><a href="${STORE_URL}/dashboard/my-orders" class="btn">Ver mis pedidos</a></p>
-    `,
-  );
-  const viaText = params.shippingMethod ? ` (${params.shippingMethod})` : "";
-  const trackingText = params.trackingNumber ? `Seguimiento: ${params.trackingNumber}\n` : "";
-  const text = `${greeting},
-
-Tu pedido #${params.orderNumber} va en camino${viaText}.
-${trackingText}
-Ver tus pedidos: ${STORE_URL}/dashboard/my-orders`;
-  return { subject, html, text };
-}
-
-export function orderRefundedEmail(params: {
-  name: string | null;
-  orderNumber: number;
-  total: number;
-  paymentMethod: string;
-}): EmailTemplate {
-  const greeting = params.name ? `Hola ${escape(params.name)}` : "Hola";
-  const subject = `Reembolso del pedido #${params.orderNumber} — ${APP_NAME}`;
-  const html = shell(
-    subject,
-    `
-    <p>${greeting},</p>
-    <p>Reembolsamos <strong>${money(params.total)}</strong> del pedido <strong>#${params.orderNumber}</strong> a tu medio de pago (${escape(params.paymentMethod)}).</p>
-    <p class="muted">Según tu banco, el dinero puede tardar de 5 a 10 días hábiles en verse reflejado.</p>
-    `,
-  );
-  const text = `${greeting},
-
-Reembolsamos ${money(params.total)} del pedido #${params.orderNumber} (${params.paymentMethod}).
-Puede tardar de 5 a 10 días hábiles en verse reflejado.`;
   return { subject, html, text };
 }

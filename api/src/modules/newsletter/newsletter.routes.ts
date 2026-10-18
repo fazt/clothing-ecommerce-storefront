@@ -1,10 +1,8 @@
 import { Router } from "express";
-import { newsletterController, subscribeBody } from "./newsletter.controller";
-import { validate } from "../../lib/validate";
-import { sensitiveLimiter } from "../../lib/rate-limit";
+import { newsletterController } from "./newsletter.controller";
 
 const router = Router();
 
-router.post("/", sensitiveLimiter, validate({ body: subscribeBody }), newsletterController.subscribe);
+router.post("/", newsletterController.subscribe);
 
 export default router;

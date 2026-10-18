@@ -1,12 +1,5 @@
 # Diagrama de arquitectura
 
-> **Nota (v3, octubre 2026):** el despliegue de referencia pasó de Railway/nixpacks a Docker
-> (`docker-compose.prod.yml` con nginx en un solo origen) y el checkout a un `PaymentProvider` común
-> (Stripe, PayPal, Mercado Pago y simulado) con reserva atómica de stock y cupones. El detalle
-> actualizado está en el [README](../README.md) y en [`VERIFICACION.md`](./VERIFICACION.md); las
-> secciones de Railway de abajo se conservan como referencia histórica.
-
-
 Vista general del monorepo: quién habla con quién y por qué camino. El detalle de cada flujo está en [`architecture.md`](./architecture.md) y el modelo de datos en [`database.md`](./database.md).
 
 ```mermaid

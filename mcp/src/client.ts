@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 export type Query = Record<string, string | number | boolean | undefined>;
 
-const DEFAULT_API_URL = "http://127.0.0.1:4057";
+const DEFAULT_API_URL = "http://localhost:4000";
 const TIMEOUT_MS = 15_000;
 
 interface CliConfig {

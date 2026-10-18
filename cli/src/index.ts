@@ -23,7 +23,7 @@ const { version } = JSON.parse(readFileSync(new URL("../package.json", import.me
 const program = new Command("ecom")
   .description("CLI para operar la API del ecommerce")
   .version(version, "-v, --version", "muestra la versión")
-  .option("--api <url>", "URL de la API (también ECOM_API_URL; por defecto la guardada o http://127.0.0.1:4057)")
+  .option("--api <url>", "URL de la API (también ECOM_API_URL; por defecto la guardada o http://localhost:4000)")
   .option("--json", "imprime la respuesta JSON de la API")
   .helpOption("-h, --help", "muestra la ayuda")
   .helpCommand("help [command]", "muestra la ayuda de un comando")

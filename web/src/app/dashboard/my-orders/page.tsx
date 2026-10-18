@@ -67,8 +67,7 @@ function EmptyState() {
 }
 
 function OrdersTable({ orders }: { orders: ApiOrder[] }) {
-  const paid = orders.filter((o) => ["PROCESSING", "SHIPPED", "DELIVERED"].includes(o.status));
-  const totalSpent = paid.reduce((sum, o) => sum + Number(o.total), 0);
+  const totalSpent = orders.reduce((sum, o) => sum + Number(o.total), 0);
   const stats = [
     { label: "Pedidos", value: orders.length.toString() },
     { label: "Total gastado", value: `$${totalSpent.toFixed(2)}` },
@@ -87,7 +86,7 @@ function OrdersTable({ orders }: { orders: ApiOrder[] }) {
 
   return (
     <>
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-3 gap-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-lg border bg-background p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -123,12 +122,7 @@ function OrdersTable({ orders }: { orders: ApiOrder[] }) {
                     className="border-b last:border-0 hover:bg-muted/30"
                   >
                     <td className="py-3 pl-4 font-mono text-xs">
-                      #{o.number}
-                      {o.trackingNumber ? (
-                        <p className="mt-1 font-sans text-[11px] text-muted-foreground">
-                          Seguimiento: <span className="font-mono">{o.trackingNumber}</span>
-                        </p>
-                      ) : null}
+                      #{o.id.slice(0, 8).toUpperCase()}
                     </td>
                     <td className="py-3 text-muted-foreground">
                       {new Date(o.createdAt).toLocaleDateString("es-ES", {

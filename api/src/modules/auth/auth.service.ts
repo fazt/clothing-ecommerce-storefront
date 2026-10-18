@@ -1,10 +1,8 @@
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import crypto from "crypto";
 import jwt, { SignOptions } from "jsonwebtoken";
-import { Role } from "../../generated/prisma/client";
+import { Role } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { env } from "../../config/env";
-import { logger } from "../../lib/logger";
 import { emailService } from "../email";
 
 export interface RegisterInput {
@@ -22,17 +20,7 @@ export interface TokenPayload {
   sub: string;
   email: string;
   role: Role;
-  /** Versión del token del usuario (User.tokenVersion). */
-  tv?: number;
 }
-
-/** SHA-256 del token de restablecimiento: en la base solo se guarda el hash. */
-export const hashResetToken = (token: string) =>
-  crypto.createHash("sha256").update(token).digest("hex");
-
-/** Token de sesión para un usuario de la base. */
-export const sessionToken = (u: { id: string; email: string; role: Role; tokenVersion: number }) =>
-  signToken({ sub: u.id, email: u.email, role: u.role, tv: u.tokenVersion });
 
 export interface PublicUser {
   id: string;
@@ -57,12 +45,16 @@ export const toPublic = (u: PublicUser): PublicUser => ({
 });
 
 export function signToken(payload: TokenPayload): string {
-  const expiresIn = env.JWT_EXPIRES_IN as SignOptions["expiresIn"];
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn });
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not configured");
+  const expiresIn = (process.env.JWT_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"];
+  return jwt.sign(payload, secret, { expiresIn });
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not configured");
+  return jwt.verify(token, secret) as TokenPayload;
 }
 
 export const authService = {
@@ -86,8 +78,8 @@ export const authService = {
     // Fail-safe: welcome email never breaks the registration
     emailService
       .sendWelcome({ email: user.email, name: user.name })
-      .catch((err) => logger.error({ err }, "auth.register: falló el email de bienvenida"));
-    const token = sessionToken(user);
+      .catch((e) => console.error("[auth.register] welcome email failed", e));
+    const token = signToken({ sub: user.id, email: user.email, role: user.role });
     return { token, user: toPublic(user) };
   },
 
@@ -100,7 +92,7 @@ export const authService = {
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
     await prisma.passwordResetToken.create({
-      data: { userId: user.id, token: hashResetToken(token), expiresAt },
+      data: { userId: user.id, token, expiresAt },
     });
     await emailService.sendPasswordReset(
       { email: user.email, name: user.name },
@@ -120,7 +112,7 @@ export const authService = {
       throw err;
     }
     const record = await prisma.passwordResetToken.findUnique({
-      where: { token: hashResetToken(token) },
+      where: { token },
     });
     if (!record || record.expiresAt < new Date()) {
       if (record) {
@@ -132,12 +124,11 @@ export const authService = {
     }
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     await prisma.$transaction([
-      // tokenVersion++ cierra las sesiones abiertas (p. ej. de quien robó la contraseña anterior).
       prisma.user.update({
         where: { id: record.userId },
-        data: { passwordHash, tokenVersion: { increment: 1 } },
+        data: { passwordHash },
       }),
-      prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
+      prisma.passwordResetToken.delete({ where: { id: record.id } }),
     ]);
   },
 
@@ -162,7 +153,7 @@ export const authService = {
       (err as Error & { code?: string }).code = "INVALID_CREDENTIALS";
       throw err;
     }
-    const token = sessionToken(user);
+    const token = signToken({ sub: user.id, email: user.email, role: user.role });
     return { token, user: toPublic(user) };
   },
 };

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { paginationQuery } from "../../lib/pagination";
 
 export const orderStatus = z.enum(
-  ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"],
+  ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
   { error: "Estado inválido" },
 );
 
@@ -26,7 +26,7 @@ export const createOrderBody = z.object({
     .array(
       z.object({
         productId: z.string().min(1),
-        quantity: z.coerce.number().int().min(1).max(999),
+        quantity: z.coerce.number().int().min(1),
         unitPrice: z.coerce.number().min(0).optional(),
         variantId: z.string().min(1).nullable().optional(),
         sizeLabel: optionalLabel,
@@ -36,21 +36,7 @@ export const createOrderBody = z.object({
     .min(1, { error: "El pedido necesita al menos un producto" }),
 });
 
-// Sin defaults: un PATCH parcial no debe pisar campos que no se enviaron.
-export const updateOrderBody = z
-  .object({
-    status: orderStatus.optional(),
-    trackingNumber: z
-      .string()
-      .trim()
-      .max(100)
-      .transform((v) => v || null)
-      .nullable()
-      .optional(),
-  })
-  .refine((v) => v.status !== undefined || v.trackingNumber !== undefined, {
-    error: "Nada que actualizar",
-  });
+export const updateOrderBody = z.object({ status: orderStatus });
 
 export type ListOrdersQuery = z.infer<typeof listOrdersQuery>;
 export type CreateOrderInput = z.infer<typeof createOrderBody>;

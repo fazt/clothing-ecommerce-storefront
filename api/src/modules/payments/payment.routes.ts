@@ -2,28 +2,38 @@ import { Router } from "express";
 import { paymentController } from "./payment.controller";
 import { requireAuth } from "../../middleware/auth";
 import { validate } from "../../lib/validate";
-import { checkoutLimiter } from "../../lib/rate-limit";
-import { checkoutBody, confirmBody, orderIdParams, quoteBody, simulateBody } from "./checkout.schema";
+import { captureParams, checkoutBody, stripeSessionParams } from "./payment.schema";
 
-// Montado en /api/checkout.
 const router = Router();
 
 router.get("/methods", paymentController.methods);
-router.post("/quote", validate({ body: quoteBody }), paymentController.quote);
-router.post("/", requireAuth, checkoutLimiter, validate({ body: checkoutBody }), paymentController.create);
-router.get("/orders/:id", requireAuth, validate({ params: orderIdParams }), paymentController.getOrder);
+
 router.post(
-  "/orders/:id/confirm",
+  "/paypal/orders",
   requireAuth,
-  validate({ params: orderIdParams, body: confirmBody }),
-  paymentController.confirm,
+  validate({ body: checkoutBody }),
+  paymentController.createPaypal,
 );
-router.post("/orders/:id/cancel", requireAuth, validate({ params: orderIdParams }), paymentController.cancel);
 router.post(
-  "/orders/:id/simulate",
+  "/paypal/orders/:paypalOrderId/capture",
   requireAuth,
-  validate({ params: orderIdParams, body: simulateBody }),
-  paymentController.simulate,
+  validate({ params: captureParams }),
+  paymentController.capturePaypal,
 );
+
+router.post(
+  "/stripe/sessions",
+  requireAuth,
+  validate({ body: checkoutBody }),
+  paymentController.createStripe,
+);
+router.post(
+  "/stripe/sessions/:sessionId/confirm",
+  requireAuth,
+  validate({ params: stripeSessionParams }),
+  paymentController.confirmStripe,
+);
+// Called by Stripe, authenticated by signature. Its body stays raw (see index.ts).
+router.post("/stripe/webhook", paymentController.stripeWebhook);
 
 export default router;

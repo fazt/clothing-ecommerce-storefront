@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { logger } from "../../lib/logger";
 import { z } from "zod";
 import { authService } from "./auth.service";
 import { clearAuthCookie, setAuthCookie } from "../../lib/auth-cookie";
@@ -65,7 +64,7 @@ export const authController = {
     // Never block response on email success/failure
     authService
       .requestPasswordReset(email)
-      .catch((err) => logger.error({ err }, "auth.forgotPassword: falló la solicitud"));
+      .catch((e) => console.error("[auth.forgotPassword] request failed", e));
     // Always respond success to avoid email enumeration
     return res.json({ ok: true });
   },
@@ -80,7 +79,7 @@ export const authController = {
       if (code === "INVALID_TOKEN") {
         return res.status(400).json({ error: "Token inválido o expirado" });
       }
-      logger.error({ err: error }, "auth.resetPassword: error");
+      console.error("[auth.resetPassword] error", error);
       return res.status(500).json({ error: "Failed to reset password" });
     }
   },

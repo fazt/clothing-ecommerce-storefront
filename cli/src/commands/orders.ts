@@ -4,7 +4,7 @@ import { c, date, emit, keyValues, money, section, statusStyle, success, table, 
 import { collect, oneOf, parseData, toCartItem, type CartItem } from "../parsers.js";
 import { resourceCommand } from "./resource.js";
 
-export const ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"] as const;
+export const ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
 interface OrderItem extends Record<string, unknown> {
   quantity: number;

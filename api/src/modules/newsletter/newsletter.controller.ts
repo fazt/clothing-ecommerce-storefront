@@ -1,21 +1,20 @@
 import { Request, Response } from "express";
-import { z } from "zod";
 import { newsletterService } from "./newsletter.service";
-import { logger } from "../../lib/logger";
 
-export const subscribeBody = z.object({
-  email: z.email({ error: "Email inválido" }).trim().toLowerCase().max(254),
-});
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const newsletterController = {
   subscribe: async (req: Request, res: Response) => {
     try {
-      const { email } = req.body as z.infer<typeof subscribeBody>;
+      const email = String(req.body?.email ?? "").trim().toLowerCase();
+
+      if (!EMAIL_RE.test(email)) {
+        return res.status(400).json({ error: "Invalid email" });
+      }
+
       await newsletterService.subscribe(email);
-      // Misma respuesta si ya estaba suscrito: no revela qué emails existen.
-      res.status(201).json({ ok: true });
-    } catch (err) {
-      logger.error({ err }, "newsletter: no se pudo suscribir");
+      res.status(201).json({ ok: true, email });
+    } catch {
       res.status(500).json({ error: "Failed to subscribe" });
     }
   },

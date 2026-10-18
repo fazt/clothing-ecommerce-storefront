@@ -6,12 +6,19 @@ import type { Product } from "@/lib/products";
 interface ProductCardProps {
   product: Product;
   index?: number;
+  originalPrice?: number;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  // Valoración real (promedio de reseñas publicadas). Sin reseñas no se pinta nada inventado.
-  const rating = product.rating;
-  const hasReviews = product.reviews > 0;
+  // Derive a "sale" discount percent (deterministic per product for UI only).
+  const hasDiscount = product.isSale;
+  const originalPrice = hasDiscount
+    ? Math.round(product.price * 1.2)
+    : undefined;
+  const discount = originalPrice
+    ? Math.round(((originalPrice - product.price) / originalPrice) * 100)
+    : 0;
+  const rating = product.rating ?? 4.5;
 
   return (
     <Link
@@ -35,9 +42,8 @@ export function ProductCard({ product }: ProductCardProps) {
         <h3 className="text-[18px] md:text-[20px] font-bold leading-tight line-clamp-1">
           {product.name}
         </h3>
-        {hasReviews ? (
-        <div className="mt-2 flex items-center gap-2" aria-label={`${rating.toFixed(1)} de 5 estrellas`}>
-          <div className="flex gap-0.5" aria-hidden>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => {
               const fill = i < Math.round(rating);
               return (
@@ -53,13 +59,17 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
           <span className="text-[13px] text-[color:var(--ink-soft)]">
             {rating.toFixed(1)}
-            <span className="text-[color:var(--ink-faded)]"> ({product.reviews})</span>
+            <span className="text-[color:var(--ink-faded)]"> /5</span>
           </span>
         </div>
-        ) : null}
         <div className="mt-2 flex items-center gap-2.5">
-          <span className="price">${product.price.toFixed(2)}</span>
-          {product.isSale ? <span className="price-off">Oferta</span> : null}
+          <span className="price">${product.price.toFixed(0)}</span>
+          {originalPrice ? (
+            <span className="price-strike">${originalPrice}</span>
+          ) : null}
+          {discount > 0 ? (
+            <span className="price-off">−{discount}%</span>
+          ) : null}
         </div>
       </div>
     </Link>

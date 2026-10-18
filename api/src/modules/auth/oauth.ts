@@ -2,10 +2,8 @@
 // cookie and the URLs that send the browser back to the web app.
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import type { Role } from "../../generated/prisma/client";
+import type { Role } from "@prisma/client";
 import type { CookieOptions, Request, Response } from "express";
-import { env, isProd } from "../../config/env";
-import { logger } from "../../lib/logger";
 
 const STATE_TTL_SECONDS = 10 * 60;
 
@@ -18,7 +16,9 @@ export interface OAuthState {
 }
 
 function jwtSecret(): string {
-  return env.JWT_SECRET;
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is not configured");
+  return secret;
 }
 
 const cookieName = (provider: string) => `oauth-${provider}`;
@@ -31,7 +31,7 @@ function stateCookieOptions(req: Request): CookieOptions {
   return {
     httpOnly: true,
     sameSite: "lax",
-    secure: env.COOKIE_SECURE ?? isProd,
+    secure: process.env.NODE_ENV === "production",
     path: req.baseUrl || "/",
   };
 }
@@ -77,9 +77,13 @@ export function homeFor(role: Role): string {
   return role === "ADMIN" ? "/dashboard" : "/";
 }
 
-// Origen público de la web (WEB_URL, validada al arrancar).
+// WEB_URL, else the first CORS origin (the web app is always one of them).
 function webOrigin(): string {
-  return new URL(env.WEB_URL).origin;
+  const configured =
+    process.env.WEB_URL?.trim() ||
+    process.env.CORS_ORIGINS?.split(",")[0]?.trim() ||
+    "http://localhost:3000";
+  return new URL(configured).origin;
 }
 
 /** Absolute URL in the web app. A path that would leave its origin falls back to "/". */
@@ -104,7 +108,7 @@ export function redirectToLoginError(
     return res.redirect(webUrl("/login", { error: `${provider}_${reason}`, next }));
   } catch (error) {
     // Only reachable with a malformed WEB_URL / CORS_ORIGINS.
-    logger.error({ err: error }, "auth.oauth: no se pudo construir la URL de login");
+    console.error("[auth.oauth] cannot build the web login URL", error);
     return res.status(500).json({ error: "WEB_URL no es una URL válida" });
   }
 }

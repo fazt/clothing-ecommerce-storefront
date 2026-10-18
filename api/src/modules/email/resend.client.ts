@@ -1,6 +1,4 @@
 import { Resend } from "resend";
-import { env } from "../../config/env";
-import { logger } from "../../lib/logger";
 
 export interface EmailPayload {
   to: string;
@@ -16,37 +14,53 @@ export type SendResult =
 
 let cachedClient: Resend | null = null;
 
-/** Sin RESEND_API_KEY los emails no se envían: se registran en el log (modo demo). */
+function getApiKey(): string {
+  return (process.env.RESEND_API_KEY ?? "").trim();
+}
+
+function getFrom(): string {
+  return (process.env.RESEND_FROM ?? "onboarding@resend.dev").trim();
+}
+
 export function isConfigured(): boolean {
-  return Boolean(env.RESEND_API_KEY);
+  const key = getApiKey();
+  return key.length > 0 && !key.includes("placeholder");
 }
 
 function getClient(): Resend {
-  cachedClient ??= new Resend(env.RESEND_API_KEY);
+  if (!cachedClient) {
+    cachedClient = new Resend(getApiKey());
+  }
   return cachedClient;
 }
 
 export async function send(payload: EmailPayload): Promise<SendResult> {
   if (!isConfigured()) {
-    // Solo el asunto: el cuerpo puede llevar enlaces con tokens (restablecer contraseña).
-    logger.info({ to: payload.to, subject: payload.subject }, "email omitido (Resend sin configurar)");
+    console.log(
+      `[email skipped (Resend not configured)] to=${payload.to} subject="${payload.subject}"`,
+    );
     return { ok: false, skipped: true, reason: "RESEND_NOT_CONFIGURED" };
   }
   try {
-    const result = await getClient().emails.send({
-      from: env.RESEND_FROM,
+    const client = getClient();
+    const result = await client.emails.send({
+      from: getFrom(),
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
       text: payload.text,
     });
     if (result.error) {
+      console.error("[email error]", result.error);
       return { ok: false, error: result.error.message };
     }
-    logger.info({ to: payload.to, subject: payload.subject, id: result.data?.id }, "email enviado");
+    console.log(
+      `[email sent] to=${payload.to} subject="${payload.subject}" id=${result.data?.id}`,
+    );
     return { ok: true, id: result.data?.id ?? null };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[email send exception]", message);
     return { ok: false, error: message };
   }
 }

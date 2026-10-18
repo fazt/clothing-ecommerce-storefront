@@ -1,6 +1,6 @@
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import { prisma } from "../../lib/prisma";
-import { SALT_ROUNDS, sessionToken, toPublic, type PublicUser } from "../auth/auth.service";
+import { SALT_ROUNDS, toPublic, type PublicUser } from "../auth/auth.service";
 import type { ChangePasswordInput, UpdateMeInput } from "./me.schema";
 
 function fail(code: string, message: string): never {
@@ -45,14 +45,9 @@ export const meService = {
     return toPublic(user);
   },
 
-  /** Cambia la contraseña, cierra las demás sesiones y devuelve un token nuevo para esta. */
-  async changePassword(userId: string, input: ChangePasswordInput): Promise<string> {
+  async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
     await assertPassword(userId, input.currentPassword);
     const passwordHash = await bcrypt.hash(input.newPassword, SALT_ROUNDS);
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash, tokenVersion: { increment: 1 } },
-    });
-    return sessionToken(user);
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   },
 };

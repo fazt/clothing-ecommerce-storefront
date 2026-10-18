@@ -1,5 +1,5 @@
-import bcrypt from "bcryptjs";
-import { Prisma } from "../../generated/prisma/client";
+import bcrypt from "bcrypt";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { contains, pageArgs, paginated } from "../../lib/pagination";
 import { SALT_ROUNDS } from "../auth/auth.service";

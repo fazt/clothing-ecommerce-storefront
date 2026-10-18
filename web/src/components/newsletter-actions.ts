@@ -28,13 +28,10 @@ export async function subscribeNewsletter(
       status: "success",
       message: "Listo. Te avisaremos sobre nuevos lanzamientos y ofertas.",
     };
-  } catch (e) {
-    const limited = e instanceof Error && e.message.includes("429");
+  } catch {
     return {
       status: "error",
-      message: limited
-        ? "Demasiados intentos. Prueba de nuevo en un rato."
-        : "No pudimos suscribirte ahora. Inténtalo de nuevo.",
+      message: "No pudimos suscribirte ahora. Inténtalo de nuevo.",
     };
   }
 }
