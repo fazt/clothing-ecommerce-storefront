@@ -32,6 +32,14 @@ const discountFields = z.object({
     .min(1, { error: "El límite debe ser al menos 1" })
     .nullable(),
   status: discountStatus,
+  minSubtotal: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.coerce.number({ error: "Monto inválido" }).min(0).nullable(),
+  ),
+  startsAt: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.coerce.date({ error: "Fecha inválida" }).nullable(),
+  ),
   expiresAt: z.preprocess(
     (v) => (v === "" ? null : v),
     z.coerce.date({ error: "Fecha inválida" }).nullable(),
@@ -47,6 +55,8 @@ export const createDiscountBody = discountFields
     description: discountFields.shape.description.optional(),
     limit: discountFields.shape.limit.optional(),
     status: discountStatus.default("ACTIVE"),
+    minSubtotal: discountFields.shape.minSubtotal.optional(),
+    startsAt: discountFields.shape.startsAt.optional(),
     expiresAt: discountFields.shape.expiresAt.optional(),
   })
   .refine(percentAtMost100, percentIssue);

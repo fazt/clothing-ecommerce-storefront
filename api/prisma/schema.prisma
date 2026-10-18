@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
+// La URL de conexión vive en prisma.config.ts (Prisma 7).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -15,17 +17,21 @@ enum Role {
 model User {
   id                  String               @id @default(uuid())
   email               String               @unique
-  // Null for accounts created through an OAuth provider (e.g. Google).
+  // Null para cuentas creadas con un proveedor OAuth (Google, GitHub).
   passwordHash        String?
   googleId            String?              @unique
   githubId            String?              @unique
   name                String?
   avatarUrl           String?
   role                Role                 @default(USER)
+  // Se incrementa al cambiar o restablecer la contraseña: invalida los JWT emitidos antes.
+  tokenVersion        Int                  @default(0)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   orders              Order[]
   passwordResetTokens PasswordResetToken[]
+  wishlist            WishlistItem[]
+  reviews             Review[]
 
   @@map("users")
 }
@@ -34,6 +40,7 @@ model PasswordResetToken {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 del token enviado por email: la base nunca guarda el token en claro.
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -43,22 +50,31 @@ model PasswordResetToken {
 }
 
 model Product {
-  id          String           @id @default(uuid())
-  name        String
-  description String?
-  price       Decimal          @db.Decimal(10, 2)
-  stock       Int              @default(0)
-  imageUrl    String?
-  images      String[]         @default([])
-  isNew       Boolean          @default(false)
-  isSale      Boolean          @default(false)
-  isFeatured  Boolean          @default(false)
-  categoryId  String?
-  category    Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  variants    ProductVariant[]
-  orderItems  OrderItem[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id           String           @id @default(uuid())
+  name         String
+  description  String?
+  price        Decimal          @db.Decimal(10, 2)
+  // Sin variantes: stock del producto. Con variantes: suma del stock de sus variantes.
+  stock        Int              @default(0)
+  imageUrl     String?
+  images       String[]         @default([])
+  isNew        Boolean          @default(false)
+  isSale       Boolean          @default(false)
+  isFeatured   Boolean          @default(false)
+  // Agregados de reseñas publicadas (se recalculan al crear o moderar una reseña).
+  ratingAvg    Float            @default(0)
+  ratingCount  Int              @default(0)
+  categoryId   String?
+  category     Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants     ProductVariant[]
+  orderItems   OrderItem[]
+  wishlistedBy WishlistItem[]
+  reviews      Review[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([categoryId])
+  @@index([createdAt])
 }
 
 model ProductVariant {
@@ -99,21 +115,55 @@ model Customer {
 }
 
 model Order {
-  id                    String      @id @default(uuid())
-  customerId            String
-  customer              Customer    @relation(fields: [customerId], references: [id])
-  userId                String?
-  user                  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status                OrderStatus @default(PENDING)
-  total                 Decimal     @db.Decimal(10, 2)
-  paymentMethod         String
-  paypalOrderId         String?     @unique
-  paypalCaptureId       String?
-  stripeSessionId       String?     @unique
-  stripePaymentIntentId String?
-  items                 OrderItem[]
-  createdAt             DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  id               String             @id @default(uuid())
+  // Número legible (#1001) para el cliente y el panel.
+  number           Int                @unique @default(autoincrement())
+  customerId       String
+  customer         Customer           @relation(fields: [customerId], references: [id])
+  userId           String?
+  user             User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status           OrderStatus        @default(PENDING)
+  currency         String             @default("USD")
+  subtotal         Decimal            @default(0) @db.Decimal(10, 2)
+  discountTotal    Decimal            @default(0) @db.Decimal(10, 2)
+  shippingTotal    Decimal            @default(0) @db.Decimal(10, 2)
+  total            Decimal            @db.Decimal(10, 2)
+  // Etiqueta visible del método ("Stripe", "PayPal", "Mercado Pago", "Pago simulado").
+  paymentMethod    String
+  provider         PaymentProviderId?
+  // Sesión / orden / preferencia creada en la pasarela.
+  providerRef      String?
+  // Id del cobro en la pasarela (se usa para reembolsar).
+  paymentRef       String?
+  paidAt           DateTime?
+  // Las órdenes PENDING vencen y liberan stock y cupón.
+  expiresAt        DateTime?
+  // true mientras la orden retiene stock y cupón: evita liberarlos dos veces.
+  stockReserved    Boolean            @default(false)
+  discountId       String?
+  discount         Discount?          @relation(fields: [discountId], references: [id], onDelete: SetNull)
+  couponCode       String?
+  shippingMethodId String?
+  shippingMethod   ShippingMethod?    @relation(fields: [shippingMethodId], references: [id], onDelete: SetNull)
+  shippingName     String?
+  shippingPhone    String?
+  shippingLine1    String?
+  shippingLine2    String?
+  shippingCity     String?
+  shippingRegion   String?
+  shippingPostal   String?
+  shippingCountry  String?
+  trackingNumber   String?
+  items            OrderItem[]
+  paymentEvents    PaymentEvent[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@unique([provider, providerRef])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([status, expiresAt])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -128,6 +178,10 @@ model OrderItem {
   colorLabel String?
   quantity   Int
   unitPrice  Decimal         @db.Decimal(10, 2)
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([variantId])
 }
 
 model NewsletterSubscriber {
@@ -145,6 +199,84 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  REFUNDED
+}
+
+enum PaymentProviderId {
+  STRIPE
+  PAYPAL
+  MERCADOPAGO
+  SIMULATED
+}
+
+/// Avisos de pago ya procesados: idempotencia de webhooks y confirmaciones.
+model PaymentEvent {
+  id        String            @id @default(uuid())
+  provider  PaymentProviderId
+  eventId   String
+  type      String
+  orderId   String?
+  order     Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdAt DateTime          @default(now())
+
+  @@unique([provider, eventId])
+  @@index([orderId])
+  @@map("payment_events")
+}
+
+model ShippingMethod {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  // Envío gratis a partir de este subtotal (null = nunca).
+  freeOver    Decimal? @db.Decimal(10, 2)
+  minDays     Int      @default(2)
+  maxDays     Int      @default(5)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shipping_methods")
+}
+
+model WishlistItem {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, productId])
+  @@index([productId])
+  @@map("wishlist_items")
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+}
+
+model Review {
+  id        String       @id @default(uuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  title     String?
+  body      String
+  // true si el autor compró el producto (orden pagada).
+  verified  Boolean      @default(false)
+  status    ReviewStatus @default(PUBLISHED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId, status, createdAt])
+  @@map("reviews")
 }
 
 model Discount {
@@ -153,10 +285,15 @@ model Discount {
   description String?
   type        DiscountType
   value       Decimal        @db.Decimal(10, 2)
+  // Subtotal mínimo para aplicar el cupón.
+  minSubtotal Decimal?       @db.Decimal(10, 2)
+  // Usos confirmados + reservados por órdenes pendientes (se liberan si el pago falla).
   usesCount   Int            @default(0)
   limit       Int?
   status      DiscountStatus @default(ACTIVE)
+  startsAt    DateTime?
   expiresAt   DateTime?
+  orders      Order[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 }

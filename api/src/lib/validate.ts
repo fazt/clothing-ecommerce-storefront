@@ -8,8 +8,11 @@ interface RequestSchemas {
 }
 
 /**
- * Validates `params`, `query` and `body` with Zod and replaces them with the
- * parsed (coerced, defaulted) values. Responds 400 with per-field details.
+ * Valida `params`, `query` y `body` con Zod y los reemplaza por los valores parseados
+ * (coaccionados y con defaults). Responde 400 con el detalle por campo.
+ *
+ * Express 5 expone `req.query` como getter de solo lectura: se redefine como propiedad
+ * propia de la petición en lugar de asignarlo.
  */
 export function validate(schemas: RequestSchemas) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -27,7 +30,12 @@ export function validate(schemas: RequestSchemas) {
           })),
         });
       }
-      (req as unknown as Record<string, unknown>)[key] = result.data;
+      Object.defineProperty(req, key, {
+        value: result.data,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
     }
     return next();
   };

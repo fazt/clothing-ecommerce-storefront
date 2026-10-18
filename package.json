@@ -1,0 +1,33 @@
+{
+  "name": "atelier-storefront",
+  "version": "3.0.0",
+  "private": true,
+  "description": "E-commerce de ropa full-stack: storefront Next.js, API Express + Prisma y panel admin.",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter ecommerce-api --filter ecommerce-web dev",
+    "dev:api": "pnpm --filter ecommerce-api dev",
+    "dev:web": "pnpm --filter ecommerce-web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "pnpm --filter ecommerce-api db:migrate",
+    "db:deploy": "pnpm --filter ecommerce-api db:deploy",
+    "db:seed": "pnpm --filter ecommerce-api db:seed"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma",
+      "bcrypt",
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

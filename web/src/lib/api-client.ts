@@ -13,7 +13,20 @@ import type {
   AuthResponse,
   CategoryInput,
   CategoryListParams,
-  CheckoutItemInput,
+  ApiAdminReview,
+  ApiShippingMethod,
+  CheckoutInput,
+  CheckoutResult,
+  MyReview,
+  PaymentMethods,
+  Quote,
+  QuoteInput,
+  ReviewInput,
+  ReviewListParams,
+  ReviewPage,
+  ReviewStatus,
+  ShippingMethodInput,
+  WishlistEntry,
   CustomerInput,
   CustomerListParams,
   DiscountInput,
@@ -24,12 +37,10 @@ import type {
   OrderStatus,
   Paginated,
   PasswordChangeInput,
-  PaypalCreateResult,
   ProductInput,
   ProductListParams,
   ProfileUpdateInput,
   RegisterInput,
-  StripeSessionResult,
   UploadFolder,
   UploadResult,
   UserCreateInput,
@@ -38,7 +49,7 @@ import type {
 } from "./api-types";
 import { toQueryString } from "./query-string";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4057/api";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -139,7 +150,11 @@ export const api = {
   orders: {
     list: (params?: OrderListParams) => get<Paginated<ApiOrder>>("/orders", params),
     get: (id: string) => get<ApiOrder>(`/orders/${id}`),
-    updateStatus: (id: string, status: OrderStatus) => patch<ApiOrder>(`/orders/${id}`, { status }),
+    updateStatus: (id: string, status: OrderStatus, trackingNumber?: string | null) =>
+      patch<ApiOrder>(`/orders/${id}`, trackingNumber === undefined ? { status } : { status, trackingNumber }),
+    setTracking: (id: string, trackingNumber: string | null) =>
+      patch<ApiOrder>(`/orders/${id}`, { trackingNumber }),
+    refund: (id: string) => post<ApiOrder>(`/orders/${id}/refund`),
     remove: (id: string) => del(`/orders/${id}`),
   },
 
@@ -152,14 +167,43 @@ export const api = {
     },
   },
 
-  payments: {
-    createPaypalOrder: (items: CheckoutItemInput[]) =>
-      post<PaypalCreateResult>("/payments/paypal/orders", { items }),
-    capturePaypalOrder: (paypalOrderId: string) =>
-      post<ApiOrder>(`/payments/paypal/orders/${encodeURIComponent(paypalOrderId)}/capture`),
-    createStripeSession: (items: CheckoutItemInput[]) =>
-      post<StripeSessionResult>("/payments/stripe/sessions", { items }),
-    confirmStripeSession: (sessionId: string) =>
-      post<ApiOrder>(`/payments/stripe/sessions/${encodeURIComponent(sessionId)}/confirm`),
+  checkout: {
+    methods: () => get<PaymentMethods>("/checkout/methods"),
+    quote: (data: QuoteInput) => post<Quote>("/checkout/quote", data),
+    create: (data: CheckoutInput) => post<CheckoutResult>("/checkout", data),
+    order: (id: string) => get<ApiOrder>(`/checkout/orders/${id}`),
+    /** Vuelta de la pasarela: la API consulta el pago (no confía en estos parámetros). */
+    confirm: (id: string, params: Record<string, string | undefined>) =>
+      post<ApiOrder>(`/checkout/orders/${id}/confirm`, params),
+    cancel: (id: string) => post<ApiOrder>(`/checkout/orders/${id}/cancel`),
+    simulate: (id: string, action: "approve" | "reject") =>
+      post<ApiOrder>(`/checkout/orders/${id}/simulate`, { action }),
+  },
+
+  wishlist: {
+    list: () => get<{ data: WishlistEntry[] }>("/me/wishlist"),
+    ids: () => get<{ data: string[] }>("/me/wishlist/ids"),
+    add: (productId: string) => put<void>(`/me/wishlist/${encodeURIComponent(productId)}`, {}),
+    remove: (productId: string) => del(`/me/wishlist/${encodeURIComponent(productId)}`),
+  },
+
+  reviews: {
+    list: (productId: string, params?: ListParams) =>
+      get<ReviewPage>(`/products/${encodeURIComponent(productId)}/reviews`, params),
+    mine: (productId: string) => get<MyReview>(`/products/${encodeURIComponent(productId)}/reviews/mine`),
+    save: (productId: string, data: ReviewInput) =>
+      put<unknown>(`/products/${encodeURIComponent(productId)}/reviews/mine`, data),
+    removeMine: (productId: string) => del(`/products/${encodeURIComponent(productId)}/reviews/mine`),
+    adminList: (params?: ReviewListParams) => get<Paginated<ApiAdminReview>>("/reviews", params),
+    moderate: (id: string, status: ReviewStatus) => patch<ApiAdminReview>(`/reviews/${id}`, { status }),
+    remove: (id: string) => del(`/reviews/${id}`),
+  },
+
+  shipping: {
+    all: () => get<{ data: ApiShippingMethod[] }>("/shipping-methods/all"),
+    create: (data: ShippingMethodInput) => post<ApiShippingMethod>("/shipping-methods", data),
+    update: (id: string, data: Partial<ShippingMethodInput>) =>
+      patch<ApiShippingMethod>(`/shipping-methods/${id}`, data),
+    remove: (id: string) => del(`/shipping-methods/${id}`),
   },
 };

@@ -1,49 +1,35 @@
-import "dotenv/config";
-import express, { NextFunction, Request, Response } from "express";
-import multer from "multer";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import morgan from "morgan";
-import router from "./routes";
+import { env } from "./config/env";
+import { logger } from "./lib/logger";
+import { prisma } from "./lib/prisma";
+import { createApp } from "./app";
+import { startJobs } from "./jobs";
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const app = createApp();
 
-// The browser calls the API directly with credentials (auth cookie), so CORS
-// must name the allowed web origins explicitly.
-const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(morgan("dev"));
-app.use(cookieParser());
-// Stripe signs the exact bytes it sends, so its webhook keeps a raw body.
-// express.json() below skips requests whose body is already parsed.
-app.use("/api/payments/stripe/webhook", express.raw({ type: "application/json" }));
-app.use(express.json());
-
-app.get("/", (_req, res) => {
-  res.json({ message: "Ecommerce API running" });
+const server = app.listen(env.PORT, () => {
+  logger.info({ port: env.PORT }, `API escuchando en http://127.0.0.1:${env.PORT}`);
 });
 
-app.use("/api", router);
+const stopJobs = startJobs();
 
-// Turn body-parser and multer failures into JSON instead of Express's HTML page.
-app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
-  if (res.headersSent) return next(err);
-  if (err instanceof multer.MulterError) {
-    const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
-    return res.status(status).json({ error: err.message, code: err.code });
-  }
-  if ((err as { type?: string }).type === "entity.parse.failed") {
-    return res.status(400).json({ error: "JSON inválido" });
-  }
-  console.error("[api] unhandled error", err);
-  return res.status(500).json({ error: "Internal server error" });
-});
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, "cerrando la API");
+  stopJobs();
+  server.close(() => {
+    prisma
+      .$disconnect()
+      .catch(() => undefined)
+      .finally(() => process.exit(0));
+  });
+  // Si alguna conexión no cierra, salir igual.
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason }, "promesa rechazada sin manejar");
 });

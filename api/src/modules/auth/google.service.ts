@@ -1,7 +1,8 @@
-import { Prisma, type User } from "@prisma/client";
+import { Prisma, type User } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { emailService } from "../email";
-import { signToken, toPublic, type PublicUser } from "./auth.service";
+import { sessionToken, toPublic, type PublicUser } from "./auth.service";
+import { logger } from "../../lib/logger";
 import type { GoogleProfile } from "./google.client";
 
 function fail(code: string, message: string): never {
@@ -62,9 +63,9 @@ export const googleAuthService = {
       // Fail-safe: the welcome email never breaks the sign-in
       emailService
         .sendWelcome({ email: user.email, name: user.name })
-        .catch((e) => console.error("[auth.google] welcome email failed", e));
+        .catch((err) => logger.error({ err }, "auth.google: falló el email de bienvenida"));
     }
-    const token = signToken({ sub: user.id, email: user.email, role: user.role });
+    const token = sessionToken(user);
     return { token, user: toPublic(user) };
   },
 };

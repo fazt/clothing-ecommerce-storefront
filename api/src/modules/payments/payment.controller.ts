@@ -1,141 +1,81 @@
 import { Request, Response } from "express";
-import { paymentService } from "./payment.service";
-import {
-  isPaypalConfigured,
-  PaypalApiError,
-  PaypalNotConfiguredError,
-} from "./paypal.client";
-import {
-  constructWebhookEvent,
-  isStripeConfigured,
-  isStripeError,
-  StripeNotConfiguredError,
-} from "./stripe.client";
-import type { CheckoutInput } from "./payment.schema";
+import { checkoutService } from "./checkout.service";
+import { CheckoutError } from "./errors";
+import { ProviderApiError } from "./providers";
+import type { CheckoutBody, QuoteBody } from "./checkout.schema";
 
-const STATUS_BY_CODE: Record<string, number> = {
-  EMPTY_CART: 400,
-  INVALID_TOTAL: 400,
-  INVALID_PRODUCT: 404,
-  INVALID_VARIANT: 404,
-  ORDER_NOT_FOUND: 404,
-  FORBIDDEN: 403,
-  CAPTURE_NOT_COMPLETED: 409,
-  PAYMENT_NOT_COMPLETED: 409,
-};
-
-function sendPaymentError(res: Response, error: unknown, fallback: string) {
-  if (error instanceof PaypalNotConfiguredError) {
-    return res.status(503).json({
-      error: "PayPal no está configurado todavía",
-      code: error.code,
-    });
+/** Errores conocidos → JSON con código estable; el resto, 500 registrado en el log. */
+export function sendCheckoutError(req: Request, res: Response, error: unknown, fallback: string) {
+  if (error instanceof CheckoutError) {
+    return res.status(error.status).json({ error: error.message, code: error.code });
   }
-  if (error instanceof StripeNotConfiguredError) {
-    return res.status(503).json({
-      error: "Stripe no está configurado todavía",
-      code: error.code,
-    });
-  }
-  if (error instanceof PaypalApiError) {
+  if (error instanceof ProviderApiError) {
+    req.log?.error({ err: error, provider: error.provider }, "la pasarela rechazó la solicitud");
     return res.status(502).json({
-      error: "PayPal API error",
-      details: error.body,
+      error: "La pasarela de pago rechazó la solicitud. Inténtalo de nuevo o elige otro método.",
+      code: "PROVIDER_ERROR",
     });
   }
-  if (isStripeError(error)) {
-    return res.status(502).json({
-      error: "Stripe rechazó la solicitud",
-      code: "STRIPE_API_ERROR",
-      details: error.message,
-    });
-  }
-  const code = (error as Error & { code?: string }).code;
-  const status = code ? STATUS_BY_CODE[code] : undefined;
-  if (status) {
-    return res.status(status).json({ error: (error as Error).message, code });
-  }
-  console.error(`[payments] ${fallback}:`, error);
+  req.log?.error({ err: error }, fallback);
   return res.status(500).json({ error: fallback });
 }
 
-function checkoutInput(req: Request) {
-  const { items } = req.body as CheckoutInput;
-  return {
-    userId: req.user!.id,
-    userEmail: req.user!.email,
-    userName: null,
-    items,
-  };
-}
+const buyer = (req: Request) => ({ id: req.user!.id, email: req.user!.email });
+const orderId = (req: Request) => String(req.params.id);
 
 export const paymentController = {
-  /** Which gateways have credentials, so the storefront only offers those. */
   methods: (_req: Request, res: Response) => {
-    res.json({ paypal: isPaypalConfigured(), stripe: isStripeConfigured() });
+    res.json({ methods: checkoutService.methods() });
   },
 
-  createPaypal: async (req: Request, res: Response) => {
+  quote: async (req: Request, res: Response) => {
     try {
-      const result = await paymentService.createCheckout(checkoutInput(req));
+      return res.json(await checkoutService.quote(req.body as QuoteBody));
+    } catch (error) {
+      return sendCheckoutError(req, res, error, "No se pudo calcular el carrito");
+    }
+  },
+
+  create: async (req: Request, res: Response) => {
+    try {
+      const result = await checkoutService.createCheckout(buyer(req), req.body as CheckoutBody);
       return res.status(201).json(result);
     } catch (error) {
-      return sendPaymentError(res, error, "Failed to create PayPal order");
+      return sendCheckoutError(req, res, error, "No se pudo iniciar el pago");
     }
   },
 
-  capturePaypal: async (req: Request, res: Response) => {
+  getOrder: async (req: Request, res: Response) => {
     try {
-      const paypalOrderId = String(req.params.paypalOrderId);
-      const order = await paymentService.capture(paypalOrderId, req.user!.id);
-      return res.json(order);
+      return res.json(await checkoutService.getOwned(buyer(req), orderId(req)));
     } catch (error) {
-      return sendPaymentError(res, error, "Failed to capture PayPal order");
+      return sendCheckoutError(req, res, error, "No se pudo leer la orden");
     }
   },
 
-  createStripe: async (req: Request, res: Response) => {
+  confirm: async (req: Request, res: Response) => {
     try {
-      const result = await paymentService.createStripeCheckout(checkoutInput(req));
-      return res.status(201).json(result);
+      const params = req.body as Record<string, string | undefined>;
+      return res.json(await checkoutService.confirm(buyer(req), orderId(req), params));
     } catch (error) {
-      return sendPaymentError(res, error, "Failed to create Stripe checkout session");
+      return sendCheckoutError(req, res, error, "No se pudo confirmar el pago");
     }
   },
 
-  confirmStripe: async (req: Request, res: Response) => {
+  cancel: async (req: Request, res: Response) => {
     try {
-      const sessionId = String(req.params.sessionId);
-      const order = await paymentService.confirmStripeSession(sessionId, req.user!.id);
-      return res.json(order);
+      return res.json(await checkoutService.cancel(buyer(req), orderId(req)));
     } catch (error) {
-      return sendPaymentError(res, error, "Failed to confirm Stripe payment");
+      return sendCheckoutError(req, res, error, "No se pudo cancelar la orden");
     }
   },
 
-  stripeWebhook: async (req: Request, res: Response) => {
-    const signature = req.headers["stripe-signature"];
-    if (typeof signature !== "string" || !Buffer.isBuffer(req.body)) {
-      return res.status(400).json({ error: "Missing Stripe signature" });
-    }
-
-    let event;
+  simulate: async (req: Request, res: Response) => {
     try {
-      event = constructWebhookEvent(req.body, signature);
+      const { action } = req.body as { action: "approve" | "reject" };
+      return res.json(await checkoutService.simulate(buyer(req), orderId(req), action));
     } catch (error) {
-      if (error instanceof StripeNotConfiguredError) {
-        return res.status(503).json({ error: error.message, code: error.code });
-      }
-      return res.status(400).json({ error: "Invalid Stripe signature" });
-    }
-
-    try {
-      await paymentService.handleStripeEvent(event);
-      return res.json({ received: true });
-    } catch (error) {
-      // A non-2xx makes Stripe retry the delivery later.
-      console.error("[payments] Stripe webhook failed:", error);
-      return res.status(500).json({ error: "Failed to process Stripe event" });
+      return sendCheckoutError(req, res, error, "No se pudo procesar el pago simulado");
     }
   },
 };

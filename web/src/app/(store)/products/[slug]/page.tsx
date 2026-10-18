@@ -1,10 +1,31 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, RotateCcw, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductVariantSelector } from "@/components/product-variant-selector";
+import { ProductReviews } from "@/components/product-reviews";
+import { WishlistButton } from "@/components/wishlist-button";
+import { reviewsApi } from "@/lib/api";
 import { fetchProducts, getProductBySlug } from "@/lib/products";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProductBySlug(slug);
+  if (!product) return { title: "Producto no encontrado — Atelier" };
+  return {
+    title: `${product.name} — Atelier`,
+    description: product.description.slice(0, 160),
+    alternates: { canonical: `/products/${product.slug}` },
+    openGraph: {
+      title: product.name,
+      description: product.description.slice(0, 160),
+      images: [{ url: product.image }],
+      type: "website",
+    },
+  };
+}
 
 export default async function ProductDetailPage({
   params,
@@ -16,12 +37,47 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
 
-  const allProducts = await fetchProducts();
+  const [allProducts, reviews] = await Promise.all([
+    fetchProducts(),
+    reviewsApi.list(product.id, { page: 1, pageSize: 5 }).catch(() => null),
+  ]);
   const related = allProducts.filter((p) => p.id !== product.id).slice(0, 4);
+  const inStock = product.variants.length
+    ? product.variants.some((v) => v.stock > 0)
+    : product.stock > 0;
+
+  // Datos estructurados (Google Shopping / rich results).
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: product.images,
+    sku: product.id,
+    category: product.category,
+    offers: {
+      "@type": "Offer",
+      price: product.price.toFixed(2),
+      priceCurrency: "USD",
+      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    },
+    ...(product.reviews > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: product.rating.toFixed(1),
+        reviewCount: product.reviews,
+      },
+    }),
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-      <nav className="flex items-center gap-1 pt-10 label-sm">
+      <script
+        type="application/ld+json"
+        // JSON.stringify no escapa "<": se reemplaza para que un texto con </script> no rompa la página.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
+      <nav className="flex flex-wrap items-center gap-1 pt-10 label-sm" aria-label="Migas de pan">
         <Link href="/" className="hover:text-[color:var(--ink)]">
           Inicio
         </Link>
@@ -51,11 +107,14 @@ export default async function ProductDetailPage({
             <span className="font-italic text-3xl text-[color:var(--ink)]">
               ${product.price.toFixed(2)}
             </span>
-            {product.reviews ? (
-              <span className="label-sm">
-                · {product.rating.toFixed(1)} ({product.reviews})
-              </span>
+            {product.reviews > 0 ? (
+              <a href="#reviews-title" className="label-sm hover:underline">
+                · {product.rating.toFixed(1)} ★ ({product.reviews} reseñas)
+              </a>
             ) : null}
+          </div>
+          <div className="mt-6">
+            <WishlistButton productId={product.id} />
           </div>
 
           <p className="font-italic mt-8 text-[17px] leading-relaxed text-[color:var(--ink-soft)] max-w-md">
@@ -84,6 +143,8 @@ export default async function ProductDetailPage({
           </ul>
         </div>
       </div>
+
+      <ProductReviews productId={product.id} initial={reviews} />
 
       <section className="border-t hairline py-20 md:py-28">
         <header className="mb-14 flex flex-col items-start gap-4 md:flex-row md:items-end md:justify-between">

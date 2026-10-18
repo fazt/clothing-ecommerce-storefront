@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { contains, pageArgs, paginated } from "../../lib/pagination";
 import {
@@ -61,27 +61,51 @@ export const productService = {
   findById: (id: string) =>
     prisma.product.findUnique({ where: { id }, include: productInclude }),
 
-  create: async ({ variants, ...data }: CreateProductInput) =>
-    prisma.product.create({
+  create: async ({ variants, ...data }: CreateProductInput) => {
+    const rows = variants ?? [];
+    return prisma.product.create({
       data: {
         ...data,
-        variants:
-          variants && variants.length > 0
-            ? { create: variants.map(mapVariant) }
-            : undefined,
+        // Con variantes, el stock del producto es la suma de las variantes.
+        ...(rows.length > 0 && { stock: rows.reduce((sum, v) => sum + v.stock, 0) }),
+        variants: rows.length > 0 ? { create: rows.map(mapVariant) } : undefined,
       },
       include: productInclude,
-    }),
+    });
+  },
 
+  /**
+   * Las variantes se sincronizan por (talla, color): las existentes se ACTUALIZAN (conservan su id,
+   * así los carritos y los pedidos siguen apuntando a ellas), las nuevas se crean y las que ya no
+   * vienen se borran (los pedidos antiguos conservan las etiquetas de talla y color).
+   */
   update: async (id: string, { variants, ...data }: UpdateProductInput) =>
     prisma.$transaction(async (tx) => {
       await tx.product.update({ where: { id }, data });
 
       if (variants !== undefined) {
-        await tx.productVariant.deleteMany({ where: { productId: id } });
+        const existing = await tx.productVariant.findMany({ where: { productId: id } });
+        const key = (v: { size: string | null; color: string | null }) => `${v.size ?? ""}|${v.color ?? ""}`;
+        const byKey = new Map(existing.map((v) => [key(v), v]));
+        const keep = new Set<string>();
+
+        for (const input of variants.map(mapVariant)) {
+          const k = key(input);
+          keep.add(k);
+          const current = byKey.get(k);
+          if (current) {
+            await tx.productVariant.update({ where: { id: current.id }, data: input });
+          } else {
+            await tx.productVariant.create({ data: { productId: id, ...input } });
+          }
+        }
+        const removed = existing.filter((v) => !keep.has(key(v))).map((v) => v.id);
+        if (removed.length > 0) await tx.productVariant.deleteMany({ where: { id: { in: removed } } });
+
         if (variants.length > 0) {
-          await tx.productVariant.createMany({
-            data: variants.map((v) => ({ productId: id, ...mapVariant(v) })),
+          await tx.product.update({
+            where: { id },
+            data: { stock: variants.reduce((sum, v) => sum + v.stock, 0) },
           });
         }
       }

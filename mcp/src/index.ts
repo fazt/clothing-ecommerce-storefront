@@ -7,7 +7,7 @@ import { apiUrl, request, type Query } from "./client.js";
 /** `ECOM_READONLY=1` registers only the read tools (e.g. when pointing at production). */
 const READ_ONLY = ["1", "true"].includes(process.env.ECOM_READONLY ?? "");
 
-const ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+const ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"] as const;
 
 const pagination = {
   search: z.string().max(100).optional().describe("Texto a buscar"),
