@@ -12,7 +12,7 @@ import {
   shippingAddress,
 } from "./helpers";
 
-async function checkout(token: string, body: Record<string, unknown>) {
+function checkout(token: string, body: Record<string, unknown>) {
   return request(app)
     .post("/api/checkout")
     .set("Authorization", `Bearer ${token}`)

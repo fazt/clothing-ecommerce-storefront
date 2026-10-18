@@ -85,7 +85,7 @@ function ApiError({ message }: { message: string }) {
 
 function Overview({
   summary,
-  orders,
+  orders: allOrders,
   products,
   customers,
 }: {
@@ -95,7 +95,7 @@ function Overview({
   customers: ApiCustomer[];
 }) {
   // Solo ventas cobradas: las pendientes, canceladas o reembolsadas no son ingresos.
-  orders = orders.filter((o) => o.status === "PROCESSING" || o.status === "SHIPPED" || o.status === "DELIVERED");
+  const orders = allOrders.filter((o) => o.status === "PROCESSING" || o.status === "SHIPPED" || o.status === "DELIVERED");
   const activeCustomers = new Set(orders.map((o) => o.customerId)).size;
   const avgTicket =
     orders.length === 0
