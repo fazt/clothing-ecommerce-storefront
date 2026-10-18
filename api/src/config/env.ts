@@ -13,6 +13,8 @@ const optional = z
     return value;
   });
 
+const emptyToUndefined = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : v);
+
 const bool = z
   .enum(["true", "false", "1", "0", ""])
   .optional()
@@ -43,11 +45,11 @@ const schema = z.object({
   COOKIE_SECURE: bool,
 
   APP_NAME: z.string().default("Atelier"),
-  CURRENCY: z
+  CURRENCY: z.preprocess(emptyToUndefined, z
     .string()
     .length(3)
     .transform((v) => v.toUpperCase())
-    .default("USD"),
+    .default("USD")),
   /** Minutos que una orden pendiente retiene stock y cupón antes de vencer. */
   ORDER_RESERVATION_MINUTES: z.coerce.number().int().min(5).max(24 * 60).default(30),
   JOBS_ENABLED: bool,
@@ -67,7 +69,7 @@ const schema = z.object({
   PAYPAL_CLIENT_ID: optional,
   PAYPAL_CLIENT_SECRET: optional,
   PAYPAL_WEBHOOK_ID: optional,
-  PAYPAL_ENV: z.enum(["sandbox", "live"]).default("sandbox"),
+  PAYPAL_ENV: z.preprocess(emptyToUndefined, z.enum(["sandbox", "live"]).default("sandbox")),
   MP_ACCESS_TOKEN: optional,
   MP_WEBHOOK_SECRET: optional,
 
@@ -75,7 +77,7 @@ const schema = z.object({
   RESEND_FROM: z.string().default("Atelier <onboarding@resend.dev>"),
 
   /** `local` guarda en ./uploads y la API las sirve en /uploads; `spaces` usa DigitalOcean Spaces (S3). */
-  STORAGE_DRIVER: z.enum(["local", "spaces"]).default("local"),
+  STORAGE_DRIVER: z.preprocess(emptyToUndefined, z.enum(["local", "spaces"]).default("local")),
   DO_SPACES_ENDPOINT: optional,
   DO_SPACES_REGION: z.string().default("nyc3"),
   DO_SPACES_BUCKET: optional,
@@ -83,7 +85,11 @@ const schema = z.object({
   DO_SPACES_SECRET: optional,
   DO_SPACES_CDN_ENDPOINT: optional,
 
-  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
+  // Vacío (LOG_LEVEL=) cuenta como no definido: antes tumbaba el arranque en otros repos del bucle.
+  LOG_LEVEL: z.preprocess(
+    emptyToUndefined,
+    z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
+  ),
 });
 
 const parsed = schema.safeParse(process.env);
