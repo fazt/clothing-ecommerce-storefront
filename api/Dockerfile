@@ -14,8 +14,7 @@ FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY api/package.json api/prisma.config.ts api/
 COPY api/prisma api/prisma
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter ecommerce-api...
+RUN pnpm install --frozen-lockfile --filter ecommerce-api...
 COPY api api
 RUN pnpm --filter ecommerce-api db:generate && pnpm --filter ecommerce-api build
 
@@ -24,8 +23,7 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY api/package.json api/prisma.config.ts api/
 COPY api/prisma api/prisma
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --prod --filter ecommerce-api...
+RUN pnpm install --frozen-lockfile --prod --filter ecommerce-api...
 
 # ---- runtime ----
 FROM base AS runtime

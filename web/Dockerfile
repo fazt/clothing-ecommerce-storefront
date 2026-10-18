@@ -8,8 +8,7 @@ ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY web/package.json web/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter ecommerce-web...
+RUN pnpm install --frozen-lockfile --filter ecommerce-web...
 COPY web web
 # NEXT_PUBLIC_* se incrustan en el bundle al compilar.
 ARG NEXT_PUBLIC_API_URL=http://127.0.0.1:8126/api
