@@ -28,6 +28,20 @@ export const orderStatusStyles: Record<
     label: "Cancelado",
     className: "bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300",
   },
+  REFUNDED: {
+    label: "Reembolsado",
+    className: "bg-zinc-200 text-zinc-800 dark:bg-zinc-500/20 dark:text-zinc-300",
+  },
+};
+
+/** Transiciones manuales permitidas (igual que la API). Pagar o reembolsar no se hace desde aquí. */
+export const ORDER_NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
+  PENDING: ["CANCELLED"],
+  PROCESSING: ["SHIPPED"],
+  SHIPPED: ["DELIVERED"],
+  DELIVERED: [],
+  CANCELLED: [],
+  REFUNDED: [],
 };
 
 export const customerSegmentStyles: Record<

@@ -1,6 +1,6 @@
 # Base de datos
 
-PostgreSQL accedido por Prisma 6. Fuente de verdad: [`api/prisma/schema.prisma`](../api/prisma/schema.prisma). Este documento resume las tablas y relaciones.
+PostgreSQL accedido por Prisma 7 (generador `prisma-client` en `api/src/generated/prisma`, adapter `@prisma/adapter-pg`; la URL vive en `api/prisma.config.ts`). Fuente de verdad: [`api/prisma/schema.prisma`](../api/prisma/schema.prisma). Este documento resume las tablas y relaciones.
 
 ## Diagrama ER
 
@@ -231,9 +231,9 @@ Códigos promocionales (no implementados en checkout aún, estructura lista).
 
 Historial en `api/prisma/migrations/`.
 
-Se aplican automáticamente en cada deploy de Railway (`prisma migrate deploy` corre al start del servicio `api`).
+Se aplican automáticamente al arrancar el contenedor de la API (`docker-entrypoint.sh` corre `prisma migrate deploy`).
 
-Para desarrollo local, usar `npx prisma migrate dev --name <descripcion>` cuando cambies el schema.
+Para desarrollo local: `pnpm --filter ecommerce-api exec prisma migrate dev --name <descripcion>` y después `pnpm db:generate` (Prisma 7 ya no regenera el cliente solo).
 
 ## Seed
 
@@ -247,3 +247,21 @@ Para desarrollo local, usar `npx prisma migrate dev --name <descripcion>` cuando
 - 5 descuentos de ejemplo
 
 Invocar con: `npx prisma db seed` (requiere `DATABASE_URL` válido en el entorno).
+
+
+## Tablas añadidas en v3 (checkout multi-pasarela)
+
+| Tabla / campos | Para qué |
+|---|---|
+| `Order.number` | Número legible (#1001…) que ve el cliente. |
+| `Order.subtotal`, `discountTotal`, `shippingTotal`, `currency` | Desglose calculado en el servidor (centavos → `Decimal(10,2)`). |
+| `Order.provider`, `providerRef`, `paymentRef`, `paidAt` | Pasarela, sesión/orden/preferencia y cobro (para reembolsar). Únicos por `(provider, providerRef)`. |
+| `Order.expiresAt`, `stockReserved` | La orden pendiente retiene stock y cupón; el job la vence y los libera una sola vez. |
+| `Order.shipping*`, `shippingMethodId`, `trackingNumber` | Dirección de entrega, método de envío y seguimiento. |
+| `Order.discountId`, `couponCode` | Cupón aplicado. |
+| `payment_events` | Idempotencia de webhooks/confirmaciones: único por `(provider, eventId)`. |
+| `shipping_methods` | Tarifas con envío gratis desde un monto y días de entrega. |
+| `wishlist_items` | Favoritos del usuario (PK compuesta `userId + productId`). |
+| `reviews` | Reseñas (una por usuario y producto), `verified` si compró, moderación `PUBLISHED/HIDDEN`. `Product.ratingAvg/ratingCount` guardan el agregado. |
+| `Discount.minSubtotal`, `startsAt` | Compra mínima y vigencia del cupón. |
+| `users.tokenVersion` | Cambiar o restablecer la contraseña invalida los JWT anteriores. |

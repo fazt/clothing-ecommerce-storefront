@@ -2,7 +2,7 @@
  * Create or promote an admin user directly in the DB.
  *
  * Usage:
- *   npx tsx scripts/create-admin.ts --email <email> --password <pw> [--name <name>] [--force]
+ *   pnpm --filter ecommerce-api exec tsx scripts/create-admin.ts --email <email> --password <pw> [--name <name>] [--force]
  *
  * Flags:
  *   --email    (required) user email
@@ -17,15 +17,17 @@
  *   - Idempotent: safe to re-run.
  *
  * Examples:
- *   npx tsx scripts/create-admin.ts --email fazt@faztweb.com --password "s3cure!" --name Fazt
+ *   pnpm --filter ecommerce-api exec tsx scripts/create-admin.ts --email fazt@faztweb.com --password "s3cure!" --name Fazt
  *
  *   # against Railway (public proxy URL):
  *   DATABASE_URL="postgresql://.../railway" \
- *     npx tsx scripts/create-admin.ts --email admin@site.com --password "$(openssl rand -hex 16)"
+ *     pnpm --filter ecommerce-api exec tsx scripts/create-admin.ts --email admin@site.com --password "$(openssl rand -hex 16)"
  */
 
-import bcrypt from "bcrypt";
-import { PrismaClient } from "@prisma/client";
+import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../src/generated/prisma/client";
 
 type ArgMap = { email?: string; password?: string; name?: string; force?: boolean };
 
@@ -61,12 +63,14 @@ function parseArgs(): ArgMap {
 function usageAndExit(message?: string): never {
   if (message) console.error(`✖ ${message}\n`);
   console.error(
-    "Usage: npx tsx scripts/create-admin.ts --email <email> --password <pw> [--name <name>] [--force]",
+    "Usage: pnpm --filter ecommerce-api exec tsx scripts/create-admin.ts --email <email> --password <pw> [--name <name>] [--force]",
   );
   process.exit(1);
 }
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
+});
 
 async function main() {
   const { email, password, name, force } = parseArgs();

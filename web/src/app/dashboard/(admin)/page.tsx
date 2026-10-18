@@ -2,7 +2,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ChevronDown,
-  Download,
+  ShoppingBag,
   Info,
   Triangle,
 } from "lucide-react";
@@ -46,11 +46,11 @@ export default async function DashboardOverviewPage() {
   return (
     <div className="mx-auto w-full max-w-[1380px]">
       <div className="mb-7 flex items-center justify-between">
-        <h1 className="a-h1">Reports</h1>
-        <button type="button" className="a-btn-outline">
-          <Download className="h-4 w-4" />
-          Download
-        </button>
+        <h1 className="a-h1">Resumen</h1>
+        <Link href="/dashboard/orders" className="a-btn-outline">
+          <ShoppingBag className="h-4 w-4" />
+          Ver pedidos
+        </Link>
       </div>
 
       {!result.ok ? (
@@ -63,27 +63,6 @@ export default async function DashboardOverviewPage() {
           customers={result.customers}
         />
       )}
-    </div>
-  );
-}
-
-function Filters() {
-  const filters = [
-    { label: "Timeframe", value: "All-time" },
-    { label: "People", value: "All" },
-    { label: "Topic", value: "All" },
-  ];
-  return (
-    <div className="mb-5 grid gap-3 sm:grid-cols-3">
-      {filters.map((f) => (
-        <button key={f.label} type="button" className="a-pill w-full">
-          <span>
-            <span className="a-pill-label">{f.label}: </span>
-            <span className="a-pill-value">{f.value}</span>
-          </span>
-          <ChevronDown className="h-4 w-4 text-[color:var(--a-ink-4)]" />
-        </button>
-      ))}
     </div>
   );
 }
@@ -115,6 +94,8 @@ function Overview({
   products: ApiProduct[];
   customers: ApiCustomer[];
 }) {
+  // Solo ventas cobradas: las pendientes, canceladas o reembolsadas no son ingresos.
+  orders = orders.filter((o) => o.status === "PROCESSING" || o.status === "SHIPPED" || o.status === "DELIVERED");
   const activeCustomers = new Set(orders.map((o) => o.customerId)).size;
   const avgTicket =
     orders.length === 0
@@ -154,7 +135,6 @@ function Overview({
 
   return (
     <>
-      <Filters />
 
       {/* Row 1 — 3 numeric + 1 bar chart */}
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -276,7 +256,7 @@ function Overview({
                         : "flat"
                   }
                   title={o.customer.name}
-                  meta={`#${o.id.slice(0, 8).toUpperCase()} · $${Number(o.total).toFixed(2)}`}
+                  meta={`#${o.number} · $${Number(o.total).toFixed(2)}`}
                 />
               ))}
             </ul>

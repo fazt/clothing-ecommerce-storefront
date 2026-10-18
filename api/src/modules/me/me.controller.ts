@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { meService } from "./me.service";
+import { setAuthCookie } from "../../lib/auth-cookie";
 import { orderService } from "../orders/order.service";
 import type { PaginationQuery } from "../../lib/pagination";
 import type { ChangePasswordInput, UpdateMeInput } from "./me.schema";
@@ -53,7 +54,8 @@ export const meController = {
 
   changePassword: async (req: Request, res: Response) => {
     try {
-      await meService.changePassword(req.user!.id, req.body as ChangePasswordInput);
+      const token = await meService.changePassword(req.user!.id, req.body as ChangePasswordInput);
+      setAuthCookie(res, token);
       return res.status(204).send();
     } catch (error) {
       const passwordError = sendPasswordError(res, errorCode(error));

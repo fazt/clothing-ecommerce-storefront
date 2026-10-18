@@ -1,7 +1,19 @@
 node_modules
 dist
+.next
 .env
+.env.*
+!.env.example
+!.env.prod.example
 *.log
+*.tsbuildinfo
+coverage
+
+# Cliente Prisma generado (se regenera en postinstall)
+/api/src/generated/
+
+# Subidas locales de imágenes (driver local)
+/api/uploads/
 
 .playwright-cli
 .playwright

@@ -8,10 +8,10 @@ Servidor MCP (stdio) que expone la API como herramientas para Claude Code, Codex
 cd mcp && npm install && npm run build
 ```
 
-En este repo ya está registrado en `.mcp.json` (servidor `ecommerce`, apuntando a `http://localhost:4000`). Claude Code lo detecta al abrir el proyecto desde la raíz. Para Codex:
+En este repo ya está registrado en `.mcp.json` (servidor `ecommerce`, apuntando a `http://127.0.0.1:4057`). Claude Code lo detecta al abrir el proyecto desde la raíz. Para Codex:
 
 ```bash
-codex mcp add ecommerce --env ECOM_API_URL=http://localhost:4000 -- node /ruta/al/repo/mcp/dist/index.js
+codex mcp add ecommerce --env ECOM_API_URL=http://127.0.0.1:4057 -- node /ruta/al/repo/mcp/dist/index.js
 ```
 
 ## Autenticación
@@ -20,7 +20,7 @@ Reutiliza la sesión de la CLI: haz `ecom login --api <url>` con la misma URL y 
 
 | Variable | Uso |
 |---|---|
-| `ECOM_API_URL` | URL de la API (por defecto, la guardada por la CLI o `http://localhost:4000`) |
+| `ECOM_API_URL` | URL de la API (por defecto, la guardada por la CLI o `http://127.0.0.1:4057`) |
 | `ECOM_TOKEN` | Token JWT; tiene prioridad sobre la sesión de la CLI |
 | `ECOM_CONFIG` | Ruta alternativa al archivo de config de la CLI |
 | `ECOM_READONLY=1` | Registra solo las herramientas de lectura (úsalo contra producción) |

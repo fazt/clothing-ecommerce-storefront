@@ -1,257 +1,120 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
+import { CheckCircle2, CircleDashed } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { Separator } from "@/components/ui/separator";
+import { paymentsApi, type PaymentProviderId } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
-export default function DashboardSettingsPage() {
+/** Todas las pasarelas soportadas y las variables que las activan (ver api/.env.example). */
+const GATEWAYS: { id: PaymentProviderId; name: string; desc: string; env: string }[] = [
+  {
+    id: "STRIPE",
+    name: "Stripe",
+    desc: "Tarjetas con Stripe Checkout. Webhook: /api/webhooks/stripe",
+    env: "STRIPE_SECRET_KEY · STRIPE_WEBHOOK_SECRET",
+  },
+  {
+    id: "PAYPAL",
+    name: "PayPal",
+    desc: "Orders v2 con captura al volver y webhook /api/webhooks/paypal",
+    env: "PAYPAL_CLIENT_ID · PAYPAL_CLIENT_SECRET · PAYPAL_WEBHOOK_ID",
+  },
+  {
+    id: "MERCADOPAGO",
+    name: "Mercado Pago",
+    desc: "Checkout Pro (tarjetas, Yape, efectivo). Webhook: /api/webhooks/mercadopago",
+    env: "MP_ACCESS_TOKEN · MP_WEBHOOK_SECRET",
+  },
+  {
+    id: "SIMULATED",
+    name: "Pago simulado",
+    desc: "Solo para demos: el comprador aprueba o rechaza en una pantalla de prueba.",
+    env: "PAYMENTS_SIMULATED_ENABLED=true (apagada por defecto en producción)",
+  },
+];
+
+export const metadata = { title: "Ajustes — Atelier" };
+
+export default async function DashboardSettingsPage() {
+  const { methods } = await paymentsApi.methods().catch((e: unknown) => {
+    unstable_rethrow(e);
+    return { methods: [] as { id: PaymentProviderId; label: string }[] };
+  });
+  const enabled = new Set(methods.map((m) => m.id));
+
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <PageHeader
         title="Ajustes"
-        description="Configura tu tienda, pagos, envíos y equipo."
+        description="Estado de las integraciones de la tienda. Las credenciales se configuran con variables de entorno en la API (nunca en el repositorio)."
       />
 
-      <Tabs defaultValue="general" className="w-full">
-        <TabsList className="w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="payments">Pagos</TabsTrigger>
-          <TabsTrigger value="shipping">Envíos</TabsTrigger>
-          <TabsTrigger value="taxes">Impuestos</TabsTrigger>
-          <TabsTrigger value="team">Equipo</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="mt-6 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información de la tienda</CardTitle>
-              <CardDescription>
-                Datos públicos que verán tus clientes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="store-name">Nombre de la tienda</Label>
-                <Input id="store-name" defaultValue="Atelier" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="store-email">Email de contacto</Label>
-                <Input
-                  id="store-email"
-                  type="email"
-                  defaultValue="hola@atelier.com"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="store-desc">Descripción</Label>
-                <Textarea
-                  id="store-desc"
-                  rows={3}
-                  defaultValue="Ropa contemporánea, diseñada para durar."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Moneda y región</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 md:grid-cols-2 md:gap-4">
-                <div className="grid gap-2">
-                  <Label>Moneda</Label>
-                  <select className="h-8 rounded-md border bg-background px-3 text-sm">
-                    <option>USD · Dólar</option>
-                    <option>EUR · Euro</option>
-                    <option>MXN · Peso mexicano</option>
-                    <option>ARS · Peso argentino</option>
-                  </select>
+      <Card>
+        <CardHeader>
+          <CardTitle>Pasarelas de pago</CardTitle>
+          <CardDescription>
+            Cada pasarela aparece en el checkout solo si la API tiene sus credenciales. Los montos se calculan en el
+            servidor y los webhooks se verifican con firma.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {GATEWAYS.map((g) => {
+            const active = enabled.has(g.id);
+            return (
+              <div key={g.id} className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    {active ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <CircleDashed className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    {g.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{g.desc}</p>
+                  <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{g.env}</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label>Zona horaria</Label>
-                  <select className="h-8 rounded-md border bg-background px-3 text-sm">
-                    <option>Europe/Madrid</option>
-                    <option>America/Mexico_City</option>
-                    <option>America/Argentina/Buenos_Aires</option>
-                  </select>
-                </div>
+                <span
+                  className={cn(
+                    "w-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                    active
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {active ? "Activa" : "Sin configurar"}
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline">Cancelar</Button>
-            <Button>Guardar cambios</Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="payments" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pasarelas de pago</CardTitle>
-              <CardDescription>
-                Métodos disponibles en el checkout.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Gateway name="Stripe" desc="Tarjetas · Apple Pay · Google Pay" active />
-              <Gateway name="PayPal" desc="Cuenta PayPal y tarjetas" active />
-              <Gateway name="Mercado Pago" desc="LATAM · cuotas" />
-              <Gateway name="Transferencia" desc="Pago manual por transferencia" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="shipping" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Zonas de envío</CardTitle>
-              <CardDescription>
-                Tarifas según la dirección de entrega.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="divide-y">
-              <ShipRow zone="España península" rate="$5.99" time="2–4 días" />
-              <ShipRow zone="Europa" rate="$12.99" time="4–7 días" />
-              <ShipRow zone="Latinoamérica" rate="$19.99" time="7–14 días" />
-              <ShipRow zone="Resto del mundo" rate="$29.99" time="10–20 días" />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="taxes" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Impuestos</CardTitle>
-              <CardDescription>Configura IVA por región.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2 md:grid-cols-3">
-                <div className="grid gap-2">
-                  <Label>España</Label>
-                  <Input defaultValue="21%" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>México</Label>
-                  <Input defaultValue="16%" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Argentina</Label>
-                  <Input defaultValue="21%" />
-                </div>
-              </div>
-              <Separator />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="h-4 w-4 rounded border" defaultChecked />
-                Incluir impuestos en el precio mostrado
-              </label>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="team" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Equipo</CardTitle>
-              <CardDescription>
-                Usuarios con acceso al panel.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="divide-y">
-              <TeamRow name="Fazt" email="fazt@faztweb.com" role="Administrador" />
-              <TeamRow name="María López" email="maria@atelier.com" role="Editor" />
-              <TeamRow
-                name="Juan Pérez"
-                email="juan@atelier.com"
-                role="Operaciones"
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
-function Gateway({
-  name,
-  desc,
-  active,
-}: {
-  name: string;
-  desc: string;
-  active?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-md border p-3">
-      <div>
-        <p className="text-sm font-semibold">{name}</p>
-        <p className="text-xs text-muted-foreground">{desc}</p>
-      </div>
-      <Button variant={active ? "outline" : "default"} size="sm">
-        {active ? "Configurar" : "Activar"}
-      </Button>
-    </div>
-  );
-}
-
-function ShipRow({
-  zone,
-  rate,
-  time,
-}: {
-  zone: string;
-  rate: string;
-  time: string;
-}) {
-  return (
-    <div className="flex items-center justify-between py-3">
-      <div>
-        <p className="text-sm font-medium">{zone}</p>
-        <p className="text-xs text-muted-foreground">{time}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="font-semibold">{rate}</span>
-        <Button variant="ghost" size="sm">
-          Editar
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function TeamRow({
-  name,
-  email,
-  role,
-}: {
-  name: string;
-  email: string;
-  role: string;
-}) {
-  return (
-    <div className="flex items-center justify-between py-3">
-      <div>
-        <p className="text-sm font-medium">{name}</p>
-        <p className="text-xs text-muted-foreground">{email}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-          {role}
-        </span>
-        <Button variant="ghost" size="sm">
-          Editar
-        </Button>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Envíos</CardTitle>
+            <CardDescription>Tarifas, envío gratis desde un monto y tiempos de entrega.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/dashboard/shipping" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Gestionar métodos de envío
+            </Link>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Cupones</CardTitle>
+            <CardDescription>Porcentaje, monto fijo o envío gratis, con mínimo de compra y límite de usos.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/dashboard/discounts" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Gestionar cupones
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

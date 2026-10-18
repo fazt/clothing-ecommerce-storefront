@@ -13,10 +13,20 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:5226";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Atelier — Ropa contemporánea",
   description:
     "Prendas atemporales, materiales nobles y diseño responsable. Mujer, hombre, accesorios y calzado.",
+  openGraph: {
+    type: "website",
+    siteName: "Atelier",
+    locale: "es_PE",
+    title: "Atelier — Ropa contemporánea",
+    description: "Prendas atemporales, materiales nobles y diseño responsable.",
+  },
 };
 
 export default function RootLayout({

@@ -231,7 +231,7 @@ function AnalyticsContent({ summary }: { summary: AnalyticsSummary }) {
           change={summary.metrics.newCustomers.change}
         />
         <MiniStat
-          label="Tasa conversión"
+          label="Tasa de pago 30d"
           value={`${summary.metrics.conversionRate.current}%`}
           change={summary.metrics.conversionRate.change}
         />

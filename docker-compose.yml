@@ -1,0 +1,23 @@
+# Postgres para desarrollo local.
+#   docker compose up -d db
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: atelier-storefront-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atelier
+      POSTGRES_PASSWORD: atelier
+      POSTGRES_DB: atelier
+    ports:
+      - "127.0.0.1:${DB_PORT:-5486}:5432"
+    volumes:
+      - atelier-storefront-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atelier -d atelier"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  atelier-storefront-data:

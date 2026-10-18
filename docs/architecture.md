@@ -1,5 +1,12 @@
 # Arquitectura
 
+> **Nota (v3, octubre 2026):** el despliegue de referencia pasó de Railway/nixpacks a Docker
+> (`docker-compose.prod.yml` con nginx en un solo origen) y el checkout a un `PaymentProvider` común
+> (Stripe, PayPal, Mercado Pago y simulado) con reserva atómica de stock y cupones. El detalle
+> actualizado está en el [README](../README.md) y en [`VERIFICACION.md`](./VERIFICACION.md); las
+> secciones de Railway de abajo se conservan como referencia histórica.
+
+
 Documento vivo del diseño del proyecto. Para la vista de producto (qué hace la app), ver el [README](../README.md). Este archivo cubre el **cómo** técnico.
 
 ## Mapa de servicios

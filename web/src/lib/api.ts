@@ -1,6 +1,6 @@
 // Server-side reads for Server Components. Mutations happen in the browser
 // through `@/lib/api-client`; this module never writes.
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type {
   AnalyticsSummary,
@@ -16,6 +16,7 @@ import type {
   OrderListParams,
   Paginated,
   PaymentMethods,
+  ReviewPage,
   ProductListParams,
   UserListParams,
 } from "./api-types";
@@ -25,7 +26,7 @@ export * from "./api-types";
 
 export const AUTH_COOKIE = "auth-token";
 
-const API_URL = process.env.API_URL ?? "http://localhost:4000/api";
+const API_URL = process.env.API_URL ?? "http://127.0.0.1:4057/api";
 const MAX_PAGE_SIZE = 100;
 
 type Query = object;
@@ -42,8 +43,19 @@ async function authHeader(token?: string): Promise<Record<string, string>> {
   }
 }
 
+/** IP del visitante para el rate limit de la API (si no, todas las lecturas cuentan como el servidor de Next). */
+async function forwardedFor(): Promise<Record<string, string>> {
+  try {
+    const incoming = await headers();
+    const value = incoming.get("x-forwarded-for") ?? incoming.get("x-real-ip");
+    return value ? { "X-Forwarded-For": value } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function get<T>(path: string, params?: Query): Promise<T> {
-  const headers = await authHeader();
+  const headers = { ...(await authHeader()), ...(await forwardedFor()) };
   const res = await fetch(`${API_URL}${path}${toQueryString(params)}`, {
     cache: "no-store",
     headers,
@@ -81,14 +93,21 @@ export const productsApi = {
 
 export const newsletterApi = {
   subscribe: async (email: string) => {
+    // Server Action: se reenvía la IP del visitante para que el rate limit de la API no
+    // trate a todos los visitantes como uno solo (el servidor de Next).
+    const incoming = await headers();
+    const forwarded = incoming.get("x-forwarded-for") ?? incoming.get("x-real-ip");
     const res = await fetch(`${API_URL}/newsletter`, {
       method: "POST",
       cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(forwarded ? { "X-Forwarded-For": forwarded } : {}),
+      },
       body: JSON.stringify({ email }),
     });
     if (!res.ok) throw new Error(`API ${res.status}`);
-    return (await res.json()) as { ok: true; email: string };
+    return (await res.json()) as { ok: true };
   },
 };
 
@@ -117,7 +136,12 @@ export const usersApi = {
 };
 
 export const paymentsApi = {
-  methods: () => get<PaymentMethods>("/payments/methods"),
+  methods: () => get<PaymentMethods>("/checkout/methods"),
+};
+
+export const reviewsApi = {
+  list: (productId: string, params?: { page?: number; pageSize?: number }) =>
+    get<ReviewPage>(`/products/${encodeURIComponent(productId)}/reviews`, params),
 };
 
 export const authApi = {

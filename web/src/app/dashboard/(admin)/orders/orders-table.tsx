@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Undo2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CopyEmail } from "@/components/dashboard/copy-email";
 import { DeleteButton } from "@/components/dashboard/delete-button";
 import {
@@ -33,7 +36,8 @@ const filters: DataTableFilter[] = [
   },
 ];
 
-const orderNumber = (o: ApiOrder) => `#${o.id.slice(0, 8).toUpperCase()}`;
+const orderNumber = (o: ApiOrder) => `#${o.number}`;
+const PAID: OrderStatus[] = ["PROCESSING", "SHIPPED", "DELIVERED"];
 
 export function OrdersTable() {
   const router = useRouter();
@@ -44,7 +48,12 @@ export function OrdersTable() {
     {
       key: "id",
       header: "Orden",
-      cell: (o) => <span className="font-mono text-[11px]">{orderNumber(o)}</span>,
+      cell: (o) => (
+        <div>
+          <span className="font-mono text-xs font-semibold">{orderNumber(o)}</span>
+          {o.couponCode ? <p className="text-[11px] text-muted-foreground">Cupón {o.couponCode}</p> : null}
+        </div>
+      ),
     },
     {
       key: "customer",
@@ -72,6 +81,18 @@ export function OrdersTable() {
       header: "Método",
       className: "text-muted-foreground",
       cell: (o) => o.paymentMethod,
+    },
+    {
+      key: "shipping",
+      header: "Envío",
+      className: "text-muted-foreground",
+      cell: (o) => (
+        <div className="text-xs">
+          <p>{o.shippingMethod?.name ?? "—"}</p>
+          {o.shippingCity ? <p>{[o.shippingCity, o.shippingCountry].filter(Boolean).join(", ")}</p> : null}
+          {o.trackingNumber ? <p className="font-mono">{o.trackingNumber}</p> : null}
+        </div>
+      ),
     },
     {
       key: "items",
@@ -106,17 +127,50 @@ export function OrdersTable() {
       filters={filters}
       searchPlaceholder="Buscar por número, cliente o email..."
       emptyMessage="No hay órdenes todavía."
-      rowActions={(o, reload) => (
-        <DeleteButton
-          label="Eliminar orden"
-          confirmMessage={`¿Eliminar la orden ${orderNumber(o)}?`}
-          onDelete={() => api.orders.remove(o.id)}
-          onDeleted={() => {
-            reload();
-            refreshStats();
-          }}
-        />
-      )}
+      rowActions={(o, reload) =>
+        PAID.includes(o.status) ? (
+          <RefundButton
+            order={o}
+            onRefunded={() => {
+              reload();
+              refreshStats();
+            }}
+          />
+        ) : o.status === "CANCELLED" ? (
+          <DeleteButton
+            label="Eliminar orden"
+            confirmMessage={`¿Eliminar la orden ${orderNumber(o)}?`}
+            onDelete={() => api.orders.remove(o.id)}
+            onDeleted={() => {
+              reload();
+              refreshStats();
+            }}
+          />
+        ) : null
+      }
     />
+  );
+}
+
+/** Reembolso total por la misma pasarela con la que se cobró. */
+function RefundButton({ order, onRefunded }: { order: ApiOrder; onRefunded: () => void }) {
+  const [pending, setPending] = useState(false);
+  async function refund() {
+    const total = `$${Number(order.total).toFixed(2)}`;
+    if (!window.confirm(`¿Reembolsar ${total} de la orden ${orderNumber(order)} por ${order.paymentMethod}?`)) return;
+    setPending(true);
+    try {
+      await api.orders.refund(order.id);
+      onRefunded();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "No se pudo reembolsar");
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <Button variant="ghost" size="sm" onClick={refund} disabled={pending} aria-label="Reembolsar orden" title="Reembolsar">
+      <Undo2 className="h-4 w-4" />
+    </Button>
   );
 }

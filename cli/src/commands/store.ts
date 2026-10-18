@@ -36,30 +36,58 @@ export function paymentsCommand(): Command {
 
   cmd
     .command("methods")
-    .description("Muestra qué pasarelas de pago están configuradas")
+    .description("Muestra qué pasarelas de pago están activas en la API")
     .action(async (_opts, command: Command) => {
-      const methods = await clientFor(command).get<{ paypal: boolean; stripe: boolean }>("/payments/methods");
-      emit(methods, () => keyValues({ PayPal: methods.paypal, Stripe: methods.stripe }));
+      const result = await clientFor(command).get<{ methods: { id: string; label: string }[] }>("/checkout/methods");
+      emit(result, () =>
+        keyValues(Object.fromEntries(result.methods.map((m) => [m.id, m.label] as [string, string]))),
+      );
     });
 
   cmd
     .command("checkout <provider>")
-    .description("Crea un pedido y devuelve el enlace de pago (stripe | paypal)")
+    .description("Crea un pedido y devuelve el enlace de pago (stripe | paypal | mercadopago | simulated)")
     .option("--item <productId[:qty[:variantId]]>", "producto del carrito (repetible)", collect(toCartItem))
-    .action(async (provider: string, opts: { item?: CartItem[] }, command: Command) => {
-      const paths: Record<string, string> = { stripe: "/payments/stripe/sessions", paypal: "/payments/paypal/orders" };
-      const path = paths[provider.toLowerCase()];
-      if (!path) throw new CliError(`Pasarela desconocida: ${provider}`, "Usa stripe o paypal.");
-      if (!opts.item?.length) throw new CliError("El carrito está vacío", "Añade productos con --item <productId>:<cantidad>.");
+    .option("--coupon <code>", "cupón de descuento")
+    .option("--shipping-method <id>", "método de envío (por defecto, el primero activo)")
+    .requiredOption("--name <name>", "nombre de quien recibe")
+    .requiredOption("--address <line1>", "dirección de entrega")
+    .requiredOption("--city <city>", "ciudad")
+    .option("--country <country>", "país", "Perú")
+    .action(
+      async (
+        provider: string,
+        opts: {
+          item?: CartItem[];
+          coupon?: string;
+          shippingMethod?: string;
+          name: string;
+          address: string;
+          city: string;
+          country: string;
+        },
+        command: Command,
+      ) => {
+        const providers = ["STRIPE", "PAYPAL", "MERCADOPAGO", "SIMULATED"];
+        const id = provider.toUpperCase();
+        if (!providers.includes(id)) {
+          throw new CliError(`Pasarela desconocida: ${provider}`, "Usa stripe, paypal, mercadopago o simulated.");
+        }
+        if (!opts.item?.length) throw new CliError("El carrito está vacío", "Añade productos con --item <productId>:<cantidad>.");
 
-      const result = await clientFor(command).post<{ orderId: string; url?: string; approveUrl?: string }>(path, {
-        items: opts.item,
-      });
-      emit(result, () => {
-        success(`Pedido ${result.orderId} creado, pendiente de pago`);
-        console.log(`${c.dim("Paga en:")} ${result.url ?? result.approveUrl}`);
-      });
-    });
+        const result = await clientFor(command).post<{ orderId: string; number: number; url: string }>("/checkout", {
+          items: opts.item,
+          provider: id,
+          couponCode: opts.coupon ?? null,
+          shippingMethodId: opts.shippingMethod ?? null,
+          shipping: { name: opts.name, line1: opts.address, city: opts.city, country: opts.country },
+        });
+        emit(result, () => {
+          success(`Pedido #${result.number} creado, pendiente de pago (stock reservado)`);
+          console.log(`${c.dim("Paga en:")} ${result.url}`);
+        });
+      },
+    );
 
   return cmd;
 }

@@ -1,18 +1,19 @@
 import type { CookieOptions, Response } from "express";
+import { env, isProd } from "../config/env";
 
 export const AUTH_COOKIE = "auth-token";
 
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-// COOKIE_DOMAIN lets the web app (e.g. example.com) read a cookie issued by
-// the API on a sibling subdomain (api.example.com). Leave it empty locally.
+// En producción web y API comparten origen (nginx). COOKIE_DOMAIN solo hace falta si la API
+// vive en un subdominio hermano (api.example.com) y la web debe leer la cookie.
 function baseOptions(): CookieOptions {
   return {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: env.COOKIE_SECURE ?? isProd,
     path: "/",
-    domain: process.env.COOKIE_DOMAIN || undefined,
+    domain: env.COOKIE_DOMAIN || undefined,
   };
 }
 

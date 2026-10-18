@@ -1,0 +1,113 @@
+# Despliegue completo: Postgres + API + web (Next.js standalone) detrás de nginx, en un solo origen.
+#   cp .env.prod.example .env.prod   # y cambia los secretos
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   # opcional, datos de demo:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod exec api ./node_modules/.bin/tsx prisma/seed.ts
+# La app queda en PUBLIC_URL (por defecto http://127.0.0.1:8126).
+
+name: atelier-storefront-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-atelier}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-atelier}
+    volumes:
+      - atelier-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4057
+      DATABASE_URL: postgresql://${POSTGRES_USER:-atelier}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-atelier}?schema=public
+      API_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}
+      WEB_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}
+      TRUST_PROXY: 1
+      JWT_SECRET: ${JWT_SECRET:?Define JWT_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      APP_NAME: ${APP_NAME:-Atelier}
+      CURRENCY: ${CURRENCY:-USD}
+      ORDER_RESERVATION_MINUTES: ${ORDER_RESERVATION_MINUTES:-30}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SEED_ON_START: ${SEED_ON_START:-false}
+      # La pasarela simulada queda APAGADA en producción salvo que la enciendas a propósito (demo pública).
+      PAYMENTS_SIMULATED_ENABLED: ${PAYMENTS_SIMULATED_ENABLED:-false}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET:-}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
+      PAYPAL_ENV: ${PAYPAL_ENV:-sandbox}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-Atelier <onboarding@resend.dev>}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}/api/auth/google/callback
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_CALLBACK_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}/api/auth/github/callback
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT:-}
+      DO_SPACES_REGION: ${DO_SPACES_REGION:-nyc3}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET:-}
+      DO_SPACES_KEY: ${DO_SPACES_KEY:-}
+      DO_SPACES_SECRET: ${DO_SPACES_SECRET:-}
+      DO_SPACES_CDN_ENDPOINT: ${DO_SPACES_CDN_ENDPOINT:-}
+    volumes:
+      # Imágenes subidas desde el panel (driver local).
+      - atelier-prod-uploads:/app/api/uploads
+    stop_grace_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}/api
+        NEXT_PUBLIC_SITE_URL: ${PUBLIC_URL:-http://127.0.0.1:8126}
+        IMAGE_HOSTS: ${IMAGE_HOSTS:-}
+    restart: unless-stopped
+    environment:
+      # Lecturas server-side (RSC) por la red interna, sin pasar por nginx.
+      API_URL: http://api:4057/api
+    depends_on:
+      api:
+        condition: service_healthy
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${WEB_PORT:-8126}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  atelier-prod-data:
+  atelier-prod-uploads:
